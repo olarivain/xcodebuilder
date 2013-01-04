@@ -104,6 +104,9 @@ module BetaBuilder
         end
       end
       
+      def built_dsym_path
+        "#{built_app_path}.dSYM"
+      end
       
       def derived_build_dir 
         for dir in Dir[File.join(File.expand_path("~/Library/Developer/Xcode/DerivedData"), "#{app_name}-*")]
@@ -116,13 +119,13 @@ module BetaBuilder
         output = BuildOutputParser.new(File.read("build.output"))
         output.build_output_dir  
       end
-      
-      def built_app_dsym_path
-        "#{built_app_path}.dSYM"
-      end
-      
+
       def ipa_path
         File.join(File.expand_path(ipa_destination_path), ipa_name)
+      end
+
+      def dsym_path
+        File.join(File.expand_path(ipa_destination_path), "#{app_name}.dSYM.zip")
       end
       
       def build_number_git
@@ -167,8 +170,12 @@ module BetaBuilder
           end
           print "Packaging and Signing..."          
           raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
-          raise "** PACKAGE FAILED ** No Provisioning Profile Found" unless @configuration.provisioning_profile
+          # raise "** PACKAGE FAILED ** No Provisioning Profile Found" unless @configuration.provisioning_profile
           
+          # trash and create the dist IPA path if needed
+          FileUtils.rm_rf @configuration.ipa_destination_path unless !File.exists?(File.expand_path @configuration.ipa_destination_path)
+          FileUtils.mkdir_p @configuration.ipa_destination_path
+
           # Construct the IPA and Sign it
           cmd = []
           cmd << @configuration.xcrun_path
@@ -177,7 +184,7 @@ module BetaBuilder
           cmd << "-v '#{@configuration.built_app_path}'"
           cmd << "-o '#{@configuration.ipa_path}'"
           cmd << "--sign '#{@configuration.signing_identity}'"
-          cmd << "--embed '#{@configuration.provisioning_profile}'"
+          cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
           if @configuration.packageargs
             cmd.concat @configuration.packageargs if @configuration.packageargs.is_a? Array
             cmd << @configuration.packageargs if @configuration.packageargs.is_a? String
@@ -187,9 +194,25 @@ module BetaBuilder
           cmd = cmd.join(" ")
           system(cmd)
           
+          # zip the dSYM over to the dist folder
+          puts "Done"
+          print "Zipping dSYM..."  
+
+          cmd = []
+          cmd << "zip"
+          cmd << "-r"
+          cmd << @configuration.dsym_path
+          cmd << @configuration.built_dsym_path
+                  
+          puts "Running #{cmd.join(" ")}" if @configuration.verbose
+          cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+          cmd = cmd.join(" ")
+          system(cmd)
+
           puts "Done"
           
           puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
+          puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
         end
 
         desc "Build and archive the app"
