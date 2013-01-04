@@ -4,6 +4,7 @@ require 'fileutils'
 require 'cfpropertylist'
 require File.dirname(__FILE__) + '/beta_builder/archived_build'
 require File.dirname(__FILE__) + '/beta_builder/deployment_strategies'
+require File.dirname(__FILE__) + '/beta_builder/release_strategies'
 require File.dirname(__FILE__) + '/beta_builder/build_output_parser'
 
 module BetaBuilder
@@ -32,7 +33,8 @@ module BetaBuilder
         :sdk => "iphoneos",
         :copy_app_bundle => false,
         :include_version_in_package => false,
-        :app_info_plist => nil
+        :app_info_plist => nil,
+        :scm => nil
 
       )
       @namespace = namespace
@@ -186,6 +188,14 @@ module BetaBuilder
           raise "Unknown deployment strategy '#{strategy_name}'."
         end
       end
+
+      def release_using(strategy_name, &block)
+        if ReleaseStrategies.valid_strategy?(strategy_name.to_sym)
+          self.release_strategy = ReleaseStrategies.build(strategy_name, self)
+        else
+          raise "Unknown release strategy '#{strategy_name}'."
+        end
+      end
     end
     
     private
@@ -302,30 +312,32 @@ module BetaBuilder
         end
 
         desc "Tag SCM and prepares for next release (increments build number)"
-          task :release do
-            # tag tree
-            @configuration.release_strategy.tag "origin"
+        task :release => :package do
+          # tag tree
+          @configuration.release_strategy.tag_current_version
 
-            # increment the build number
-            increment_build_number
+          # increment the build number
+          increment_build_number
+
+          @configuration.release_strategy.prepare_for_next_release
+        end
+
+        def increment_build_number
+          if @configuration.next_build_number == nil then
+            return
           end
 
-          def increment_build_number
-            if @configuration.next_build_number == nil then
-              return
-            end
+          # read the plist and extract data
+          plist = CFPropertyList::List.new(:file => @configuration.app_info_plist_path)
+          data = CFPropertyList.native_types(plist.value)
 
-            # read the plist and extract data
-            plist = CFPropertyList::List.new(:file => @configuration.app_info_plist_path)
-            data = CFPropertyList.native_types(plist.value)
+          # re inject new version number into the data
+          data["CFBundleVersion"] = @configuration.next_build_number
 
-            # re inject new version number into the data
-            data["CFBundleVersion"] = @configuration.next_build_number
-
-            # recreate the plist and save it
-            plist.value = CFPropertyList.guess(data)
-            plist.save(@configuration.app_info_plist_path, CFPropertyList::List::FORMAT_XML)
-          end
+          # recreate the plist and save it
+          plist.value = CFPropertyList.guess(data)
+          plist.save(@configuration.app_info_plist_path, CFPropertyList::List::FORMAT_XML)
+        end
       end
     end
   end
