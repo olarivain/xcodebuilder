@@ -28,7 +28,11 @@ module BetaBuilder
         :skip_clean => ENV.fetch('SKIPCLEAN', false),
         :verbose => ENV.fetch('VERBOSE', false),
         :dry_run => ENV.fetch('DRY', false),
-        :set_version_number => false
+        :set_version_number => false,
+        :sdk => "iphoneos",
+        :copy_app_bundle => false,
+        :include_version_in_package => false
+
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -59,9 +63,10 @@ module BetaBuilder
           args << "-scheme '#{scheme}'"
         else
           args << "-target '#{target}'"
-          args << "-sdk iphoneos"
           args << "-project '#{project_file_path}'" if project_file_path
         end
+
+        args << "-sdk #{sdk}"
         
         args << "-configuration '#{configuration}'"
         args << "-arch '#{arch}'" unless arch.nil?
@@ -88,19 +93,34 @@ module BetaBuilder
         end
       end
       
-      def ipa_name
-        if app_name
-          "#{app_name}.ipa"
-        else
-          "#{target}.ipa"
+      def full_info_plist_path
+        if info_plist_path != nil then 
+          File.expand_path info_plist_path
+        else 
+          nil
         end
+      end
+
+      def built_app_long_version_suffix
+        if !include_version_in_package then
+          ""
+        else 
+          plist = CFPropertyList::List.new(:file => "#{built_app_path}/Info.plist")
+          data = CFPropertyList.native_types(plist.value)
+          "-#{data['CFBundleVersion']}"
+        end
+      end
+
+      def ipa_name
+        prefix = app_name == nil ? target : app_name
+        "#{prefix}#{built_app_long_version_suffix}.ipa"
       end      
       
       def built_app_path
         if build_dir == :derived
-          File.join("#{derived_build_dir}", "#{configuration}-iphoneos", "#{app_file_name}")
+          File.join("#{derived_build_dir}", "#{configuration}-#{sdk}", "#{app_file_name}")
         else
-          File.join("#{build_dir}", "#{configuration}-iphoneos", "#{app_file_name}")
+          File.join("#{build_dir}", "#{configuration}-#{sdk}", "#{app_file_name}")
         end
       end
       
@@ -125,7 +145,11 @@ module BetaBuilder
       end
 
       def dsym_path
-        File.join(File.expand_path(ipa_destination_path), "#{app_name}.dSYM.zip")
+        File.join(File.expand_path(ipa_destination_path), "#{app_name}#{built_app_long_version_suffix}.dSYM.zip")
+      end
+
+      def app_bundle_path
+        ipa_destination_path
       end
       
       def build_number_git
@@ -165,54 +189,68 @@ module BetaBuilder
         
         desc "Package the beta release as an IPA file"
         task :package => :build do
+          # there is no need for IPA or dSYM unless we have a device build,
+          # so do that part only on iphoneos SDKs
+          if(@configuration.sdk.eql? "iphoneos") then
+            package_device_build
+          end
+
+          if @configuration.copy_app_bundle then
+            # FileUtils.rm_rf @configuration.app_bundle_path unless !File.exists? @configuration.app_bundle_path
+            # FileUtils.mkdir_p @configuration.app_bundle_path
+            FileUtils.cp_r @configuration.built_app_path, @configuration.app_bundle_path
+          end
+        end
+
+        def package_device_build
           if @configuration.auto_archive
-            Rake::Task["#{@namespace}:archive"].invoke
-          end
-          print "Packaging and Signing..."          
-          raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
-          # raise "** PACKAGE FAILED ** No Provisioning Profile Found" unless @configuration.provisioning_profile
+              Rake::Task["#{@namespace}:archive"].invoke
+            end
+            print "Packaging and Signing..."          
+            raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
+            # raise "** PACKAGE FAILED ** No Provisioning Profile Found" unless @configuration.provisioning_profile
+            
+            # trash and create the dist IPA path if needed
+            FileUtils.rm_rf @configuration.ipa_destination_path unless !File.exists? @configuration.ipa_destination_path
+            FileUtils.mkdir_p @configuration.ipa_destination_path
           
-          # trash and create the dist IPA path if needed
-          FileUtils.rm_rf @configuration.ipa_destination_path unless !File.exists?(File.expand_path @configuration.ipa_destination_path)
-          FileUtils.mkdir_p @configuration.ipa_destination_path
+            # Construct the IPA and Sign it
+            cmd = []
+            cmd << @configuration.xcrun_path
+            cmd << "-sdk #{@configuration.sdk}"
+            cmd << "PackageApplication"
+            cmd << "-v '#{@configuration.built_app_path}'"
+            cmd << "-o '#{@configuration.ipa_path}'"
+            cmd << "--sign '#{@configuration.signing_identity}'"
+            cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
+            if @configuration.packageargs
+              cmd.concat @configuration.packageargs if @configuration.packageargs.is_a? Array
+              cmd << @configuration.packageargs if @configuration.packageargs.is_a? String
+            end
+            puts "Running #{cmd.join(" ")}" if @configuration.verbose
+            cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+            cmd = cmd.join(" ")
+            system(cmd)
+            
+            # zip the dSYM over to the dist folder
+            puts "Done"
+            print "Zipping dSYM..."  
 
-          # Construct the IPA and Sign it
-          cmd = []
-          cmd << @configuration.xcrun_path
-          cmd << "-sdk iphoneos"
-          cmd << "PackageApplication"
-          cmd << "-v '#{@configuration.built_app_path}'"
-          cmd << "-o '#{@configuration.ipa_path}'"
-          cmd << "--sign '#{@configuration.signing_identity}'"
-          cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
-          if @configuration.packageargs
-            cmd.concat @configuration.packageargs if @configuration.packageargs.is_a? Array
-            cmd << @configuration.packageargs if @configuration.packageargs.is_a? String
-          end
-          puts "Running #{cmd.join(" ")}" if @configuration.verbose
-          cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
-          cmd = cmd.join(" ")
-          system(cmd)
-          
-          # zip the dSYM over to the dist folder
-          puts "Done"
-          print "Zipping dSYM..."  
+            cmd = []
+            cmd << "zip"
+            cmd << "-r"
+            cmd << @configuration.dsym_path
+            cmd << @configuration.built_dsym_path
+                    
+            puts "Running #{cmd.join(" ")}" if @configuration.verbose
+            cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+            cmd = cmd.join(" ")
+            system(cmd)
 
-          cmd = []
-          cmd << "zip"
-          cmd << "-r"
-          cmd << @configuration.dsym_path
-          cmd << @configuration.built_dsym_path
-                  
-          puts "Running #{cmd.join(" ")}" if @configuration.verbose
-          cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
-          cmd = cmd.join(" ")
-          system(cmd)
-
-          puts "Done"
-          
-          puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
-          puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
+            puts "Done"
+            
+            puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
+            puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
         end
 
         desc "Build and archive the app"
