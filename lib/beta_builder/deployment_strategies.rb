@@ -18,7 +18,7 @@ module BetaBuilder
       end
 
       def configure(&block)
-        yield @configuration
+        yield self
       end
 
       def prepare

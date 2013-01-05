@@ -192,6 +192,8 @@ module BetaBuilder
       def release_using(strategy_name, &block)
         if ReleaseStrategies.valid_strategy?(strategy_name.to_sym)
           self.release_strategy = ReleaseStrategies.build(strategy_name, self)
+          self.release_strategy.configure(&block)
+          self.release_strategy.prepare
         else
           raise "Unknown release strategy '#{strategy_name}'."
         end
@@ -317,26 +319,31 @@ module BetaBuilder
           @configuration.release_strategy.tag_current_version
 
           # increment the build number
-          increment_build_number
+          prepare_for_next_release
 
           @configuration.release_strategy.prepare_for_next_release
         end
 
-        def increment_build_number
-          if @configuration.next_build_number == nil then
+        def prepare_for_next_release
+          next_build_number = @configuration.next_build_number
+          if next_build_number == nil then
             return
           end
+
+
+          print "Updating #{@configuration.app_info_plist} to version #{next_build_number}"
 
           # read the plist and extract data
           plist = CFPropertyList::List.new(:file => @configuration.app_info_plist_path)
           data = CFPropertyList.native_types(plist.value)
 
           # re inject new version number into the data
-          data["CFBundleVersion"] = @configuration.next_build_number
+          data["CFBundleVersion"] = next_build_number
 
           # recreate the plist and save it
           plist.value = CFPropertyList.guess(data)
           plist.save(@configuration.app_info_plist_path, CFPropertyList::List::FORMAT_XML)
+          puts "Done"
         end
       end
     end

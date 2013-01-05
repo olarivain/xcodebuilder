@@ -14,9 +14,13 @@ module BetaBuilder
       end
 
       def configure(&block)
-        yield @configuration
+        yield self
       end
     end
+
+    def prepare
+        puts "Nothing to prepare!" if @configuration.verbose
+      end
 
     private
 
