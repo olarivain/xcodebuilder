@@ -43,17 +43,6 @@ module BetaBuilder
       define
     end
 
-    def ipa_destination_path=(val)
-      @ipa_destination_path = File.expand val
-    end
-
-    def app_info_plist=(val)
-      @app_info_plist = val
-      if val != nil 
-        @app_info_plist_path = File.expand app_info_plist
-      end
-    end
-
     def xcodebuild(*args)
       # we're using tee as we still want to see our build output on screen
       cmd = []
@@ -105,6 +94,14 @@ module BetaBuilder
           "#{app_name}.app"
         else
           "#{target}.app"
+        end
+      end
+      
+      def app_info_plist_path
+        if app_info_plist != nil then 
+          File.expand_path app_info_plist
+        else 
+          nil
         end
       end
 
@@ -176,8 +173,12 @@ module BetaBuilder
         File.join(File.expand_path(ipa_destination_path), ipa_name)
       end
 
+      def dsym_name
+        "#{app_name}#{built_app_long_version_suffix}.dSYM.zip"
+      end
+
       def dsym_path
-        File.join(File.expand_path(ipa_destination_path), "#{app_name}#{built_app_long_version_suffix}.dSYM.zip")
+        File.join(File.expand_path(ipa_destination_path), dsym_name)
       end
 
       def app_bundle_path
@@ -281,6 +282,10 @@ module BetaBuilder
             # copy the dSYM to the pkg destination
             FileUtils.cp_r @configuration.built_dsym_path, @configuration.ipa_destination_path
 
+            # the version is pulled from a path relative location, so fetch BEFORE
+            # we Dir.chdir
+            dsym_name = @configuration.dsym_name
+            dsym_target_path = @configuration.dsym_path
             # move to pkg destination and zip the dSYM
             current_dir = Dir.pwd
             Dir.chdir @configuration.ipa_destination_path
@@ -288,31 +293,30 @@ module BetaBuilder
             cmd = []
             cmd << "zip"
             cmd << "-r"
-            cmd << "#{@configuration.app_name}.app.dSYM.zip"
+            cmd << dsym_target_path
             cmd << "#{@configuration.app_name}.app.dSYM"
                     
             puts "Running #{cmd.join(" ")}" if @configuration.verbose
-            cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+            cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
             cmd = cmd.join(" ")
             system(cmd)
-
-            
 
             if @configuration.zip_ipa_and_dsym then
               cmd = []
               cmd << "zip"
               cmd << @configuration.zipped_package_name
-              cmd << "#{@configuration.app_name}.app.dSYM.zip"
+              cmd << @configuration.dsym_name
               cmd << @configuration.ipa_name
-              cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
-              puts
-              puts cmd.join " "
+              cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
               system cmd.join " "
 
-              # File.delete @configuration.dsym_path unless !File.exists? @configuration.dsym_path
-              # File.delete @configuration.ipa_path unless !File.exists? @configuration.ipa_path
+              # delete all the artifacts but the .app. which will be needed by the automation builds
+              File.delete @configuration.dsym_name unless !File.exists? @configuration.dsym_name
+              File.delete @configuration.ipa_name unless !File.exists? @configuration.ipa_name
+              FileUtils.rm_rf "#{@configuration.app_name}.app.dSYM" unless !File.exists? "#{@configuration.app_name}.app.dSYM"
+
               puts "Done"
-              puts "ZIP package: #{@configuration.zipped_package_path}"
+              puts "ZIP package: #{@configuration.zipped_package_name}"
             else
               puts "Done"
               puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
