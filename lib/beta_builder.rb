@@ -22,6 +22,7 @@ module BetaBuilder
         :project_file_path => nil,
         :workspace_path => nil,
         :ipa_destination_path => "./",
+        :zip_ipa_and_dsym => true,
         :scheme => nil,
         :app_name => nil,
         :arch => nil,
@@ -164,6 +165,10 @@ module BetaBuilder
         output.build_output_dir  
       end
 
+      def zipped_package_path
+        File.join(File.expand_path(ipa_destination_path), "#{app_name}#{built_app_long_version_suffix}.zip")
+      end
+
       def ipa_path
         File.join(File.expand_path(ipa_destination_path), ipa_name)
       end
@@ -281,10 +286,24 @@ module BetaBuilder
             cmd = cmd.join(" ")
             system(cmd)
 
-            puts "Done"
-            
-            puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
-            puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
+            if @configuration.zip_ipa_and_dsym then
+              cmd = []
+              cmd << "zip"
+              cmd << @configuration.zipped_package_path
+              cmd << @configuration.dsym_path
+              cmd << @configuration.ipa_path
+              cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+              system cmd.join " "
+
+              File.delete @configuration.dsym_path unless !File.exists? @configuration.dsym_path
+              File.delete @configuration.ipa_path unless !File.exists? @configuration.ipa_path
+              puts "Done"
+              puts "ZIP package: #{@configuration.zipped_package_path}"
+            else
+              puts "Done"
+              puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
+              puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
+            end
         end
 
         desc "Build and archive the app"
