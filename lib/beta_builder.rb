@@ -43,6 +43,17 @@ module BetaBuilder
       define
     end
 
+    def ipa_destination_path=(val)
+      @ipa_destination_path = File.expand val
+    end
+
+    def app_info_plist=(val)
+      @app_info_plist = val
+      if val != nil 
+        @app_info_plist_path = File.expand app_info_plist
+      end
+    end
+
     def xcodebuild(*args)
       # we're using tee as we still want to see our build output on screen
       cmd = []
@@ -94,14 +105,6 @@ module BetaBuilder
           "#{app_name}.app"
         else
           "#{target}.app"
-        end
-      end
-      
-      def app_info_plist_path
-        if app_info_plist != nil then 
-          File.expand_path app_info_plist
-        else 
-          nil
         end
       end
 
@@ -165,8 +168,8 @@ module BetaBuilder
         output.build_output_dir  
       end
 
-      def zipped_package_path
-        File.join(File.expand_path(ipa_destination_path), "#{app_name}#{built_app_long_version_suffix}.zip")
+      def zipped_package_name
+        "#{app_name}#{built_app_long_version_suffix}.zip"
       end
 
       def ipa_path
@@ -275,28 +278,39 @@ module BetaBuilder
             puts "Done"
             print "Zipping dSYM..."  
 
+            # copy the dSYM to the pkg destination
+            FileUtils.cp_r @configuration.built_dsym_path, @configuration.ipa_destination_path
+
+            # move to pkg destination and zip the dSYM
+            current_dir = Dir.pwd
+            Dir.chdir @configuration.ipa_destination_path
+
             cmd = []
             cmd << "zip"
             cmd << "-r"
-            cmd << @configuration.dsym_path
-            cmd << @configuration.built_dsym_path
+            cmd << "#{@configuration.app_name}.app.dSYM.zip"
+            cmd << "#{@configuration.app_name}.app.dSYM"
                     
             puts "Running #{cmd.join(" ")}" if @configuration.verbose
             cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
             cmd = cmd.join(" ")
             system(cmd)
 
+            
+
             if @configuration.zip_ipa_and_dsym then
               cmd = []
               cmd << "zip"
-              cmd << @configuration.zipped_package_path
-              cmd << @configuration.dsym_path
-              cmd << @configuration.ipa_path
+              cmd << @configuration.zipped_package_name
+              cmd << "#{@configuration.app_name}.app.dSYM.zip"
+              cmd << @configuration.ipa_name
               cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+              puts
+              puts cmd.join " "
               system cmd.join " "
 
-              File.delete @configuration.dsym_path unless !File.exists? @configuration.dsym_path
-              File.delete @configuration.ipa_path unless !File.exists? @configuration.ipa_path
+              # File.delete @configuration.dsym_path unless !File.exists? @configuration.dsym_path
+              # File.delete @configuration.ipa_path unless !File.exists? @configuration.ipa_path
               puts "Done"
               puts "ZIP package: #{@configuration.zipped_package_path}"
             else
@@ -304,6 +318,9 @@ module BetaBuilder
               puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
               puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
             end
+
+            # back to working directory
+            Dir.chdir current_dir
         end
 
         desc "Build and archive the app"
