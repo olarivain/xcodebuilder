@@ -28,7 +28,9 @@ module BetaBuilder
         :verbose => ENV.fetch('VERBOSE', false),
         :sdk => "iphoneos",
         :app_info_plist => nil,
-        :scm => nil
+        :scm => nil,
+        :skip_scm_tagging => true,
+        :spec_file => nil
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -329,23 +331,52 @@ module BetaBuilder
         end
 
         desc "For CocoaPod libraries: Tags SCM, pushes to cocoapod and increments build number"
-        task :cocoapod_release => :package do
+        task :cocoapod_release => :build do
           raise "CocoaPod repo is not set, aborting cocoapod_release task." unless @configuration.pod_repo != nil
-          
-          @configuration.release_strategy.tag_current_version
+          raise "Spec file is not set, aborting cocoapod_release task." unless @configuration.spec_file != nil
 
+          # tag and push current pod
+          @configuration.release_strategy.tag_current_version
+          push_pod
+
+          # increment version numbers
+          if increment_pod_and_plist_number then
+              # and push appropriately
+              @configuration.release_strategy.prepare_for_next_pod_release
+          end
+        end
+
+        def push_pod
           cmd = []
-          cmd << "cocoapod"
+          cmd << "pod"
           cmd << "push"
           cmd << @configuration.pod_repo
+          # cmd << "--local-only"
+          cmd << "--allow-warnings"
 
           print "Pushing to CocoaPod..."
-          system cmd.join " "
+          system (cmd.join " ")
           puts "Done."
+        end
 
-          if prepare_for_next_release then
-              @configuration.release_strategy.prepare_for_next_release
+        def increment_pod_and_plist_number
+          old_build_number = @configuration.build_number
+          if !prepare_for_next_release then 
+            return false
           end
+
+          # bump the spec version and save it
+          spec_content = File.open(@configuration.spec_file, "r").read
+          old_version = "version = '#{old_build_number}'"
+          new_version = "version = '#{@configuration.build_number}'"
+
+          spec_content = spec_content.sub old_version, new_version
+
+          File.open(@configuration.spec_file, "w") {|f|
+            f.write spec_content
+          }
+
+          true
         end
 
         if @configuration.deployment_strategy
@@ -362,7 +393,10 @@ module BetaBuilder
         def release
             # tag first, then prepare for next release and 
             # commit the updated plist
-            @configuration.release_strategy.tag_current_version
+            if !@configuration.skip_scm_tagging then
+              @configuration.release_strategy.tag_current_version
+            end
+
             if prepare_for_next_release then
               @configuration.release_strategy.prepare_for_next_release
             end

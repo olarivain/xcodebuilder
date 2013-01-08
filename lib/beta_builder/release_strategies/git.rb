@@ -29,6 +29,7 @@ module BetaBuilder
         # -f sounds brutal to start with, so let's give it a try without
 #        cmd << "-f"
         cmd << @tag_name
+
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
         system(cmd.join " ")
         puts
@@ -51,23 +52,48 @@ module BetaBuilder
 
       end
 
+      def prepare_for_next_pod_release
+        build_number = @configuration.build_number
+        raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
+
+        print "Committing #{@configuration.app_info_plist} and #{@configuration.spec_file} with version #{build_number}"
+        
+        stage_files [@configuration.app_info_plist, @configuration.spec_file]
+        commit_and_push_with_message "Preparing for next pod release..."
+       
+        puts "Done"
+      end
+
       def prepare_for_next_release
         build_number = @configuration.build_number
         raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
-        cmd = []
+        
         print "Committing #{@configuration.app_info_plist} with version #{build_number}"
-        # stage the info plist
+
+        stage_files [@configuration.app_info_plist]
+        commit_and_push_with_message "Preparing for next release..."
+       
+        puts "Done"
+      end
+
+      def stage_files files
+        cmd = []
+        
         cmd << "git"
         cmd << "add"
-        cmd << @configuration.app_info_plist
+        files.each do |value|
+            cmd <<  value
+        end
         system(cmd.join " ")
+      end 
 
-        # then commit it
+      def commit_and_push_with_message message
+         # then commit it
         cmd = []
         cmd << "git"
         cmd << "commit"
         cmd << "-m"
-        cmd << '"Preparing for next release..."'
+        cmd << "'#{message}'"
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
         system(cmd.join " ")
         puts
@@ -84,7 +110,6 @@ module BetaBuilder
         
         system(cmd.join " ")
         puts 
-        puts "Done"
       end
     end
   end
