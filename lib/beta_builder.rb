@@ -30,6 +30,7 @@ module BetaBuilder
         :app_info_plist => nil,
         :scm => nil,
         :skip_scm_tagging => true,
+        :skip_version_increment => true,
         :spec_file => nil
       )
       @namespace = namespace
@@ -403,6 +404,10 @@ module BetaBuilder
         end
 
         def prepare_for_next_release
+          if @configuration.skip_version_increment then
+            return false
+          end
+          
           next_build_number = @configuration.next_build_number
           if next_build_number == nil then
             return false
