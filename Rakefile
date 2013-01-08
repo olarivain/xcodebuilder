@@ -14,12 +14,12 @@ task :default => :package
 spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
-  s.name              = "betabuilder"
-  s.version           = "0.7.7"
-  s.summary           = "A set of Rake tasks and utilities for managing iOS ad-hoc builds"
-  s.authors           = ["Luke Redpath", "Nick Peelman"]
-  s.email             = ["luke@lukeredpath.co.uk", "nick@peelman.us"]
-  s.homepage          = "http://github.com/peelman/betabuilder"
+  s.name              = "ot-ios-builder"
+  s.version           = "0.7.8"
+  s.summary           = "A set of Rake tasks and utilities for building and releasing iOS apps"
+  s.authors           = ["Luke Redpath", "Nick Peelman", "Olivier Larivain"]
+  s.email             = ["luke@lukeredpath.co.uk", "nick@peelman.us", "olarivain@opentable.com"]
+  s.homepage          = "http://github.com/opentable/betabuilder"
 
   s.has_rdoc          = false
   s.extra_rdoc_files  = %w(README.md LICENSE CHANGES.md)
