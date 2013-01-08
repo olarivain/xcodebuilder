@@ -13,30 +13,22 @@ module BetaBuilder
       @configuration = Configuration.new(
         :configuration => "Adhoc",
         :build_dir => "build",
-        :auto_archive => false,
-        :archive_path  => File.expand_path("~/Library/Developer/Xcode/Archives"),
         :xcodebuild_path => "/usr/bin/xcodebuild",
         :xcrun_path => "/usr/bin/xcrun",
         :xcodeargs => nil,
         :packageargs => nil,
         :project_file_path => nil,
         :workspace_path => nil,
-        :ipa_destination_path => "./",
+        :ipa_destination_path => "./pkg",
         :zip_ipa_and_dsym => true,
         :scheme => nil,
         :app_name => nil,
         :arch => nil,
-        :xcode4_archive_mode => false,
         :skip_clean => ENV.fetch('SKIPCLEAN', false),
         :verbose => ENV.fetch('VERBOSE', false),
-        :dry_run => ENV.fetch('DRY', false),
-        :set_version_number => false,
         :sdk => "iphoneos",
-        :copy_app_bundle => false,
-        :include_version_in_package => false,
         :app_info_plist => nil,
         :scm => nil
-
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -59,6 +51,7 @@ module BetaBuilder
         return release_notes.call if release_notes.is_a? Proc
         release_notes
       end
+
       def build_arguments
         args = []
         if workspace_path
@@ -74,7 +67,6 @@ module BetaBuilder
         
         args << "-configuration '#{configuration}'"
         args << "-arch '#{arch}'" unless arch.nil?
-        args << "VERSION_LONG='#{build_number_git}'" if set_version_number
         
         if xcodeargs
             args.concat xcodeargs if xcodeargs.is_a? Array
@@ -82,10 +74,6 @@ module BetaBuilder
         end
         
         args
-      end
-
-      def archive_name
-        app_name || target
       end
       
       def app_file_name
@@ -106,7 +94,8 @@ module BetaBuilder
       end
 
       def build_number
-        if (app_info_plist_path == nil) || (!File.exists? app_info_plist_path) then
+        # no plist is found, return a nil version
+        if (app_info_plist_path == nil)  || (!File.exists? app_info_plist_path) then
           return nil
         end
 
@@ -117,6 +106,7 @@ module BetaBuilder
       end
 
       def next_build_number
+        # if we don't have a current version, we don't have a next version :)
         if build_number == nil then
           return nil
         end
@@ -129,7 +119,7 @@ module BetaBuilder
       end
 
       def built_app_long_version_suffix
-        if !include_version_in_package || build_number == nil then
+        if build_number == nil then
           ""
         else 
           "-#{build_number}"
@@ -182,11 +172,7 @@ module BetaBuilder
       end
 
       def app_bundle_path
-        ipa_destination_path
-      end
-      
-      def build_number_git
-        `git describe --tags --abbrev=1`.chop
+        "#{ipa_destination_path}/#{app_name}.app"
       end
       
       def deploy_using(strategy_name, &block)
@@ -230,146 +216,163 @@ module BetaBuilder
           puts "Done"
         end
         
-        desc "Package the beta release as an IPA file"
+        desc "Package the release as a distributable archive"
         task :package => :build do
           # there is no need for IPA or dSYM unless we have a device build,
           # so do that part only on iphoneos SDKs
+          # likewise, there is no need to keep the .app folder around if we're building for ARM
+          # so skip this part on iphoneos SDK
           if(@configuration.sdk.eql? "iphoneos") then
-            package_device_build
-          end
+            package_ipa
+            package_dsym
+            package_final_artifact
+          else 
+            # clean the pkg folder: create it if it doesn't exist yet
+            FileUtils.mkdir_p @configuration.ipa_destination_path unless  File.exists? @configuration.ipa_destination_path
+            # and remove an existing app_bundle_path if it exists
+            FileUtils.rm_rf @configuration.app_bundle_path unless !File.exists? @configuration.app_bundle_path
 
-          if @configuration.copy_app_bundle then
-            # FileUtils.rm_rf @configuration.app_bundle_path unless !File.exists? @configuration.app_bundle_path
-            # FileUtils.mkdir_p @configuration.app_bundle_path
-            FileUtils.cp_r @configuration.built_app_path, @configuration.app_bundle_path
+            # now we can properly copy the app bundle path over.
+            FileUtils.cp_r @configuration.built_app_path, "#{@configuration.ipa_destination_path}"
           end
         end
 
-        def package_device_build
-          if @configuration.auto_archive
-              Rake::Task["#{@namespace}:archive"].invoke
-            end
-            print "Packaging and Signing..."          
-            raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
-            # raise "** PACKAGE FAILED ** No Provisioning Profile Found" unless @configuration.provisioning_profile
-            
-            # trash and create the dist IPA path if needed
-            FileUtils.rm_rf @configuration.ipa_destination_path unless !File.exists? @configuration.ipa_destination_path
-            FileUtils.mkdir_p @configuration.ipa_destination_path
+        desc "Builds an IPA from the built .app"
+        def package_ipa
+          print "Packaging and Signing..."          
+          raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
+          # trash and create the dist IPA path if needed
+          FileUtils.rm_rf @configuration.ipa_destination_path unless !File.exists? @configuration.ipa_destination_path
+          FileUtils.mkdir_p @configuration.ipa_destination_path
+        
+          # Construct the IPA and Sign it
+          cmd = []
+          cmd << @configuration.xcrun_path
+          cmd << "-sdk #{@configuration.sdk}"
+          cmd << "PackageApplication"
+          cmd << "-v '#{@configuration.built_app_path}'"
+          cmd << "-o '#{@configuration.ipa_path}'"
+          cmd << "--sign '#{@configuration.signing_identity}'"
+          cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
+          if @configuration.packageargs then
+            cmd.concat @configuration.packageargs if @configuration.packageargs.is_a? Array
+            cmd << @configuration.packageargs if @configuration.packageargs.is_a? String
+          end
+          puts "Running #{cmd.join(" ")}" if @configuration.verbose
+          cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+          cmd = cmd.join(" ")
+          system(cmd)
           
-            # Construct the IPA and Sign it
-            cmd = []
-            cmd << @configuration.xcrun_path
-            cmd << "-sdk #{@configuration.sdk}"
-            cmd << "PackageApplication"
-            cmd << "-v '#{@configuration.built_app_path}'"
-            cmd << "-o '#{@configuration.ipa_path}'"
-            cmd << "--sign '#{@configuration.signing_identity}'"
-            cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
-            if @configuration.packageargs
-              cmd.concat @configuration.packageargs if @configuration.packageargs.is_a? Array
-              cmd << @configuration.packageargs if @configuration.packageargs.is_a? String
-            end
-            puts "Running #{cmd.join(" ")}" if @configuration.verbose
-            cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
-            cmd = cmd.join(" ")
-            system(cmd)
-            
-            # zip the dSYM over to the dist folder
-            puts "Done"
-            print "Zipping dSYM..."  
-
-            # copy the dSYM to the pkg destination
-            FileUtils.cp_r @configuration.built_dsym_path, @configuration.ipa_destination_path
-
-            # the version is pulled from a path relative location, so fetch BEFORE
-            # we Dir.chdir
-            dsym_name = @configuration.dsym_name
-            dsym_target_path = @configuration.dsym_path
-            # move to pkg destination and zip the dSYM
-            current_dir = Dir.pwd
-            Dir.chdir @configuration.ipa_destination_path
-
-            cmd = []
-            cmd << "zip"
-            cmd << "-r"
-            cmd << dsym_target_path
-            cmd << "#{@configuration.app_name}.app.dSYM"
-                    
-            puts "Running #{cmd.join(" ")}" if @configuration.verbose
-            cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
-            cmd = cmd.join(" ")
-            system(cmd)
-
-            if @configuration.zip_ipa_and_dsym then
-              cmd = []
-              cmd << "zip"
-              cmd << @configuration.zipped_package_name
-              cmd << @configuration.dsym_name
-              cmd << @configuration.ipa_name
-              cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
-              system cmd.join " "
-
-              # delete all the artifacts but the .app. which will be needed by the automation builds
-              File.delete @configuration.dsym_name unless !File.exists? @configuration.dsym_name
-              File.delete @configuration.ipa_name unless !File.exists? @configuration.ipa_name
-              FileUtils.rm_rf "#{@configuration.app_name}.app.dSYM" unless !File.exists? "#{@configuration.app_name}.app.dSYM"
-
-              puts "Done"
-              puts "ZIP package: #{@configuration.zipped_package_name}"
-            else
-              puts "Done"
-              puts "IPA File: #{@configuration.ipa_path}" if @configuration.verbose
-              puts "dSYM File: #{@configuration.dsym_path}" if @configuration.verbose
-            end
-
-            # back to working directory
-            Dir.chdir current_dir
+          # zip the dSYM over to the dist folder
+          puts "Done"
         end
 
-        desc "Build and archive the app"
-        task :archive => :build do
-          puts "Archiving build..."
-          archive = BetaBuilder.archive(@configuration)
-          output_path = archive.save_to(@configuration.archive_path)
-          puts "Archive saved to #{output_path}."
+        desc "Zips the dSYM to the package folder"
+        def package_dsym
+          print "Packaging dSYM..."  
+
+          # copy the dSYM to the pkg destination
+          FileUtils.cp_r @configuration.built_dsym_path, @configuration.ipa_destination_path
+
+          # the version is pulled from a path relative location, so fetch BEFORE
+          # we Dir.chdir
+          dsym_name = @configuration.dsym_name
+          dsym_target_path = @configuration.dsym_path
+
+          # move to pkg destination and zip the dSYM
+          current_dir = Dir.pwd
+          Dir.chdir @configuration.ipa_destination_path
+
+          cmd = []
+          cmd << "zip"
+          cmd << "-r"
+          cmd << dsym_target_path
+          cmd << "#{@configuration.app_name}.app.dSYM"
+                  
+          puts "Running #{cmd.join(" ")}" if @configuration.verbose
+          cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
+          cmd = cmd.join(" ")
+          system(cmd)
+          # back to working directory
+          Dir.chdir current_dir
         end
 
-        if @configuration.deployment_strategy
-          desc "Prepare your app for deployment"
-          task :prepare => :package do
-            @configuration.deployment_strategy.prepare
-          end
-          
-          desc "Deploy the beta using your chosen deployment strategy"
-          task :deploy => :prepare do
-            @configuration.deployment_strategy.deploy
-          end
-          
-          desc "Deploy the last build"
-          task :redeploy do
-            @configuration.deployment_strategy.prepare
-            @configuration.deployment_strategy.deploy
-          end
+        desc "Packages the final artifact (IPA + dSYM)"
+        def package_final_artifact
+          # keep track of current working dir
+          current_dir = Dir.pwd
+          Dir.chdir @configuration.ipa_destination_path
+
+          # zip final package
+          cmd = []
+          cmd << "zip"
+          cmd << @configuration.zipped_package_name
+          cmd << @configuration.dsym_name
+          cmd << @configuration.ipa_name
+          cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
+          system cmd.join " "
+
+          # delete all the artifacts but the .app. which will be needed by the automation builds
+          File.delete @configuration.dsym_name unless !File.exists? @configuration.dsym_name
+          FileUtils.rm_rf "#{@configuration.app_name}.app.dSYM" unless !File.exists? "#{@configuration.app_name}.app.dSYM"
+
+          # back to working directory
+          Dir.chdir current_dir
+
+          puts "Done"
+          puts "ZIP package: #{@configuration.zipped_package_name}"
         end
 
         desc "Tag SCM and prepares for next release (increments build number)"
         task :release => :package do
-          # tag tree
+          release
+        end
+
+        desc "For CocoaPod libraries: Tags SCM, pushes to cocoapod and increments build number"
+        task :cocoapod_release => :package do
+          raise "CocoaPod repo is not set, aborting cocoapod_release task." unless @configuration.pod_repo != nil
+          
           @configuration.release_strategy.tag_current_version
 
-          # increment the build number
-          prepare_for_next_release
+          cmd = []
+          cmd << "cocoapod"
+          cmd << "push"
+          cmd << @configuration.pod_repo
 
-          @configuration.release_strategy.prepare_for_next_release
+          print "Pushing to CocoaPod..."
+          system cmd.join " "
+          puts "Done."
+
+          if prepare_for_next_release then
+              @configuration.release_strategy.prepare_for_next_release
+          end
+        end
+
+        if @configuration.deployment_strategy
+          desc "Prepare your app for deployment"
+          task :deploy_and_release => :package do
+            # deploy first
+            @configuration.deployment_strategy.deploy
+
+            # then release
+            release
+          end
+        end
+
+        def release
+            # tag first, then prepare for next release and 
+            # commit the updated plist
+            @configuration.release_strategy.tag_current_version
+            if prepare_for_next_release then
+              @configuration.release_strategy.prepare_for_next_release
+            end
         end
 
         def prepare_for_next_release
           next_build_number = @configuration.next_build_number
           if next_build_number == nil then
-            return
+            return false
           end
-
 
           print "Updating #{@configuration.app_info_plist} to version #{next_build_number}"
 
@@ -384,6 +387,7 @@ module BetaBuilder
           plist.value = CFPropertyList.guess(data)
           plist.save(@configuration.app_info_plist_path, CFPropertyList::List::FORMAT_XML)
           puts "Done"
+          return true
         end
       end
     end
