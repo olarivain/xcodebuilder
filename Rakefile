@@ -15,7 +15,7 @@ spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
   s.name              = "ot-ios-builder"
-  s.version           = "0.7.8"
+  s.version           = "0.7.9.2"
   s.summary           = "A set of Rake tasks and utilities for building and releasing iOS apps"
   s.authors           = ["Luke Redpath", "Nick Peelman", "Olivier Larivain"]
   s.email             = ["luke@lukeredpath.co.uk", "nick@peelman.us", "olarivain@opentable.com"]
@@ -109,7 +109,7 @@ end
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), *%w[lib]))
 require 'rubygems'
-require 'betabuilder'
+require 'ot-ios-builder'
 
 BetaBuilder::Tasks.new do |config|
   config.project_file_path = File.expand_path("~/Code/mine/squeemote/project/Squeemote.xcodeproj")

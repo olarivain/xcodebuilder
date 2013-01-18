@@ -18,6 +18,7 @@ module BetaBuilder
         :xcodeargs => nil,
         :packageargs => nil,
         :project_file_path => nil,
+        :workspace_name => nil,
         :workspace_path => nil,
         :ipa_destination_path => "./pkg",
         :zip_ipa_and_dsym => true,
@@ -147,7 +148,7 @@ module BetaBuilder
       end
       
       def derived_build_dir 
-        for dir in Dir[File.join(File.expand_path("~/Library/Developer/Xcode/DerivedData"), "#{app_name}-*")]
+        for dir in Dir[File.join(File.expand_path("~/Library/Developer/Xcode/DerivedData"), "#{workspace_name}-*")]
           return "#{dir}/Build/Products" if File.read( File.join(dir, "info.plist") ).match workspace_path
         end
       end
