@@ -30,6 +30,7 @@ module XcodeBuilder
         :scm => nil,
         :tag_vcs => false,
         :increment_plist_version => false,
+        :pod_repo => nil,
         :podspec_file => nil
       )
       @namespace = namespace
