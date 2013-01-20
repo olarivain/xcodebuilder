@@ -1,4 +1,4 @@
-module BetaBuilder
+module XcodeBuilder
   module DeploymentStrategies
     class Web < Strategy
       def extended_configuration_for_strategy

@@ -2,8 +2,6 @@ require "rubygems"
 require "rubygems/package_task"
 require "rdoc/task"
 
-SITE_ROOT  = "/var/www/projects.lukeredpath.co.uk/betabuilder"
-
 task :default => :package
 
 # This builds the actual gem. For details of what all these options
@@ -14,12 +12,12 @@ task :default => :package
 spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
-  s.name              = "ot-ios-builder"
-  s.version           = "0.7.9.2"
-  s.summary           = "A set of Rake tasks and utilities for building and releasing iOS apps"
-  s.authors           = ["Luke Redpath", "Nick Peelman", "Olivier Larivain"]
-  s.email             = ["luke@lukeredpath.co.uk", "nick@peelman.us", "olarivain@opentable.com"]
-  s.homepage          = "http://github.com/opentable/betabuilder"
+  s.name              = "xcodebuilder"
+  s.version           = "0.0.1"
+  s.summary           = "A set of Rake tasks and utilities for building and releasing xcode projects"
+  s.authors           = ["Olivier Larivain"]
+  s.email             = ["olarivain@gmail.com"]
+  s.homepage          = "http://github.com/olarivain/xcodebuilder"
 
   s.has_rdoc          = false
   s.extra_rdoc_files  = %w(README.md LICENSE CHANGES.md)
@@ -81,45 +79,4 @@ desc 'Build and install the gem'
 task :install => :package do
   gem_path = File.join('pkg', spec.file_name)
   system("gem install #{gem_path}")
-end
-
-namespace :website do
-  desc "Deploy to production"
-  task :deploy => [:upload_website]
-
-  desc "Regenerate the site"
-  task :generate do
-    Dir.chdir("website") do
-      system("jekyll")
-    end
-  end
-    
-  task :upload_website => [:generate] do
-    system("rsync -avz --delete website/_site/ lukeredpath.co.uk:#{SITE_ROOT}")
-  end
-  
-  task :dev do
-    Dir.chdir("website") do
-      system("jekyll --auto")
-    end
-  end
-end
-
-# BetaBuilder tasks for testing
-
-$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), *%w[lib]))
-require 'rubygems'
-require 'ot-ios-builder'
-
-BetaBuilder::Tasks.new do |config|
-  config.project_file_path = File.expand_path("~/Code/mine/squeemote/project/Squeemote.xcodeproj")
-  config.target = "Squeemote"
-  config.configuration = "Adhoc" 
-  config.deploy_using(:web) do
-  end
-end
-
-BetaBuilder::Tasks.new(:custom_namespace) do |config|
-  config.target = "TestApp"
-  config.configuration = "Custom" 
 end

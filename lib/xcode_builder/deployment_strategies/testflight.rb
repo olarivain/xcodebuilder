@@ -3,7 +3,7 @@ require 'json'
 require 'tmpdir'
 require 'fileutils'
 
-module BetaBuilder
+module XcodeBuilder
   module DeploymentStrategies
     class TestFlight < Strategy
       include Rake::DSL

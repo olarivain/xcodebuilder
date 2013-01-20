@@ -1,5 +1,5 @@
-module BetaBuilder
-  module ReleaseStrategies
+module XcodeBuilder
+  module DeploymentStrategies
     def self.valid_strategy?(strategy_name)
       strategies.keys.include?(strategy_name.to_sym)
     end
@@ -8,27 +8,32 @@ module BetaBuilder
       strategies[strategy_name.to_sym].new(configuration)
     end
 
-    class ReleaseStrategy
+    class Strategy
       def initialize(configuration)
         @configuration = configuration
+
+        if respond_to?(:extended_configuration_for_strategy)
+          @configuration.instance_eval(&extended_configuration_for_strategy)
+        end
       end
 
       def configure(&block)
-        yield self
+        yield @configuration
       end
-    end
 
-    def prepare
+      def prepare
         puts "Nothing to prepare!" if @configuration.verbose
       end
+    end
 
     private
 
     def self.strategies
-      {:git => Git}
+      {:web => Web, :testflight => TestFlight}
     end
   end
 end
 
-require File.dirname(__FILE__) + '/release_strategies/git'
+require File.dirname(__FILE__) + '/deployment_strategies/web'
+require File.dirname(__FILE__) + '/deployment_strategies/testflight'
 

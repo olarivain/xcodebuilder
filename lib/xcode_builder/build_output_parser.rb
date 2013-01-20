@@ -1,4 +1,4 @@
-module BetaBuilder
+module XcodeBuilder
   class BuildOutputParser
 
     def initialize(output)

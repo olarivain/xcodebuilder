@@ -1,4 +1,4 @@
-module BetaBuilder
+module XcodeBuilder
   module ReleaseStrategies
     class Git < ReleaseStrategy
       attr_accessor :branch, :origin, :tag_name
@@ -56,9 +56,9 @@ module BetaBuilder
         build_number = @configuration.build_number
         raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
 
-        print "Committing #{@configuration.app_info_plist} and #{@configuration.spec_file} with version #{build_number}"
+        print "Committing #{@configuration.info_plist} and #{@configuration.podspec_file} with version #{build_number}"
         
-        stage_files [@configuration.app_info_plist, @configuration.spec_file]
+        stage_files [@configuration.info_plist, @configuration.podspec_file]
         commit_and_push_with_message "Preparing for next pod release..."
        
         puts "Done"
@@ -68,9 +68,9 @@ module BetaBuilder
         build_number = @configuration.build_number
         raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
         
-        print "Committing #{@configuration.app_info_plist} with version #{build_number}"
+        print "Committing #{@configuration.info_plist} with version #{build_number}"
 
-        stage_files [@configuration.app_info_plist]
+        stage_files [@configuration.info_plist]
         commit_and_push_with_message "Preparing for next release..."
        
         puts "Done"
