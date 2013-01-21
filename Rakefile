@@ -78,5 +78,5 @@ end
 desc 'Build and install the gem'
 task :install => :package do
   gem_path = File.join('pkg', spec.file_name)
-  system("gem install #{gem_path}")
+  system("gem install #{gem_path} --no-ri --no-rdoc")
 end

@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = "xcodebuilder"
-  s.version = "0.0.3"
+  s.version = "0.0.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Olivier Larivain"]
-  s.date = "2013-01-20"
+  s.date = "2013-01-21"
   s.email = ["olarivain@gmail.com"]
   s.extra_rdoc_files = ["README.md", "LICENSE", "CHANGES.md"]
   s.files = ["CHANGES.md", "LICENSE", "README.md", "lib/xcode_builder/build_output_parser.rb", "lib/xcode_builder/configuration.rb", "lib/xcode_builder/deployment_strategies/testflight.rb", "lib/xcode_builder/deployment_strategies/web.rb", "lib/xcode_builder/deployment_strategies.rb", "lib/xcode_builder/release_strategies/git.rb", "lib/xcode_builder/release_strategies.rb", "lib/xcode_builder.rb", "lib/xcodebuilder.rb"]

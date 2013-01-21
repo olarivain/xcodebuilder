@@ -21,6 +21,7 @@ module XcodeBuilder
         :scheme => nil,
         :app_name => nil,
         :app_extension => "app",
+        :signing_identity => nil,
         :package_destination_path => "./pkg",
         :skip_dsym => false,
         :arch => nil,
@@ -35,6 +36,10 @@ module XcodeBuilder
       )
       @namespace = namespace
       yield @configuration if block_given?
+
+      # expand the info plist path, as it's likely to be relative and we'll be fucking
+      # around with the cwd later on.
+      @configuration.info_plist = File.expand_path @configuration.info_plist unless @configuration.info_plist == nil
     end
 
     def xcodebuild(*args)
@@ -74,7 +79,7 @@ module XcodeBuilder
       # so do that part only on iphoneos/macosx SDKs
       #
       if(@configuration.sdk.eql? "iphoneos") then
-        package_ios_ipa
+        package_ios_app
         package_dsym
         package_artifact
       elsif (@configuration.sdk.eql? "macosx") then
@@ -178,11 +183,13 @@ module XcodeBuilder
       # zip final package
       cmd = []
       cmd << "zip"
+      cmd << "-r"
       cmd << @configuration.zipped_package_name
       cmd << @configuration.dsym_name unless @configuration.skip_dsym
       cmd << @configuration.ipa_name unless !@configuration.sdk.eql? "iphoneos"
       cmd << "#{@configuration.app_name}.#{@configuration.app_extension}" unless !@configuration.sdk.eql? "macosx"
       cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
+
       system cmd.join " "
 
       # delete all the artifacts but the .app. which will be needed by the automation builds
