@@ -46,14 +46,15 @@ module XcodeBuilder
       end
     end
 
-    def bundle_id
+    def final_bundle_id
+      final_plist_path = "#{app_bundle_path}/Info.plist"
        # no plist is found, return a nil version
-      if (info_plist_path == nil)  || (!File.exists? info_plist_path) then
+      if (final_plist_path == nil)  || (!File.exists? final_plist_path) then
         return nil
       end
 
       # read the plist and extract data
-      plist = CFPropertyList::List.new(:file => info_plist_path)
+      plist = CFPropertyList::List.new(:file => final_plist_path)
       data = CFPropertyList.native_types(plist.value)
       data["CFBundleIdentifier"]
     end
