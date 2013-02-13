@@ -23,6 +23,7 @@ module XcodeBuilder
       args << "-sdk #{sdk}"
       
       args << "-configuration '#{configuration}'"
+      args << "BUILD_DIR=#{File.expand_path build_dir}" unless build_dir == :derived
       
       if xcodebuild_extra_args
           args.concat xcodebuild_extra_args if xcodebuild_extra_args.is_a? Array
@@ -43,6 +44,18 @@ module XcodeBuilder
       else 
         nil
       end
+    end
+
+    def bundle_id
+       # no plist is found, return a nil version
+      if (info_plist_path == nil)  || (!File.exists? info_plist_path) then
+        return nil
+      end
+
+      # read the plist and extract data
+      plist = CFPropertyList::List.new(:file => info_plist_path)
+      data = CFPropertyList.native_types(plist.value)
+      data["CFBundleIdentifier"]
     end
 
     def build_number
