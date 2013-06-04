@@ -53,7 +53,7 @@ module XcodeBuilder
       system(cmd)
     end
     
-    # # desc "Clean the Build"
+    # desc "Clean the Build"
     def clean
       unless @configuration.skip_clean
         print "Cleaning Project..."
@@ -62,7 +62,7 @@ module XcodeBuilder
       end
     end
     
-    # # desc "Build the beta release of the app"
+    # desc "Build the beta release of the app"
     def build
       clean unless @configuration.skip_clean
 
@@ -72,7 +72,7 @@ module XcodeBuilder
       puts "Done"
     end
     
-    # # desc "Package the release as a distributable archive"
+    # desc "Package the release as a distributable archive"
     def package
       build
       # there is no need for IPA or dSYM unless we have a device/macosx build,
@@ -91,7 +91,7 @@ module XcodeBuilder
       end
     end
 
-    # # desc "Builds an IPA from the built .app"
+    # desc "Builds an IPA from the built .app"
     def package_ios_app
       print "Packaging and Signing..."          
       raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
@@ -106,8 +106,8 @@ module XcodeBuilder
       cmd << "PackageApplication"
       cmd << "-v '#{@configuration.built_app_path}'"
       cmd << "-o '#{@configuration.ipa_path}'"
-      cmd << "--sign '#{@configuration.signing_identity}'"
-      cmd << "--embed '#{@configuration.provisioning_profile}'" unless @configuration.signing_identity == nil
+      cmd << "--sign '#{@configuration.signing_identity}'" unless @configuration.signing_identity == nil
+      cmd << "--embed '#{@configuration.provisioning_profile}'"
       if @configuration.xcrun_extra_args then
         cmd.concat @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? Array
         cmd << @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? String
@@ -143,9 +143,7 @@ module XcodeBuilder
 
     # desc "Zips the dSYM to the package folder"
     def package_dsym
-      if @configuration.skip_dsym then
-        return
-      end
+      return if @configuration.skip_dsym
       print "Packaging dSYM..."  
 
       # copy the dSYM to the pkg destination
@@ -203,14 +201,18 @@ module XcodeBuilder
       puts "ZIP package: #{@configuration.zipped_package_name}"
     end
 
-    # desc "For CocoaPod libraries: Tags SCM, pushes to cocoapod and increments build number"
+    # desc "For CocoaPod libraries: dry run, tags SCM, pushes to cocoapod and increments build number"
     def pod_release
-      build
       raise "CocoaPod repo is not set, aborting cocoapod_release task." unless @configuration.pod_repo != nil
       raise "Spec file is not set, aborting cocoapod_release task." unless @configuration.podspec_file != nil
 
-      # tag and push current pod
+      # make a dry run first
+      pod_dry_run
+
+      # tag source as needed
       @configuration.release_strategy.tag_current_version
+
+      # and push pod pod
       push_pod
 
       # increment version numbers
@@ -220,16 +222,27 @@ module XcodeBuilder
       end
     end
 
+    # runs a pod dry run before tagging
+    def pod_dry_run
+      clean unless @configuration.skip_clean
+
+      print "Pod dry run..."
+      podfile = if @configuration.podspec_file == nil then "" else @configuration.podspec_file end
+      result = system "pod spec lint #{podfile} --error-only"
+      raise "** Pod dry run failed **" if !result
+      puts "Done"
+    end
+
     def push_pod
       cmd = []
       cmd << "pod"
       cmd << "push"
       cmd << @configuration.pod_repo
-      # cmd << "--local-only"
       cmd << "--allow-warnings"
 
       print "Pushing to CocoaPod..."
-      system (cmd.join " ")
+      result = system (cmd.join " ")
+      raise "** Pod push failed **" if !result
       puts "Done."
     end
 
@@ -255,7 +268,6 @@ module XcodeBuilder
 
     def deploy
       package
-      # deploy first
       @configuration.deployment_strategy.deploy
     end
 
