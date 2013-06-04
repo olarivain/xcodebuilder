@@ -26,12 +26,11 @@ module XcodeBuilder
         #first, tag
         cmd << "git"
         cmd << "tag"
-        # -f sounds brutal to start with, so let's give it a try without
-#        cmd << "-f"
         cmd << @tag_name
 
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
-        system(cmd.join " ")
+        result = system(cmd.join " ")
+        raise "Could not tag repository" unless result
         puts
         puts "Done"
 
@@ -46,6 +45,7 @@ module XcodeBuilder
         cmd << @branch
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
         system(cmd.join " ")
+        raise "Could not push to #{@origin}" unless result
         
         puts
         puts "Done"
@@ -108,7 +108,8 @@ module XcodeBuilder
         cmd << @branch
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
         
-        system(cmd.join " ")
+        result = system(cmd.join " ")
+        raise "Could not push #{@branch} to #{@origin}" unless result
         puts 
       end
     end
