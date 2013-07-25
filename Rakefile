@@ -13,7 +13,7 @@ spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
   s.name              = "xcodebuilder"
-  s.version           = "0.0.8"
+  s.version           = "0.0.9"
   s.summary           = "A set of Rake tasks and utilities for building and releasing xcode projects"
   s.authors           = ["Olivier Larivain"]
   s.email             = ["olarivain@gmail.com"]
@@ -29,7 +29,7 @@ spec = Gem::Specification.new do |s|
 
   # If you want to depend on other gems, add them here, along with any
   # relevant versions
-  s.add_dependency("CFPropertyList", "~> 2.0.0")
+  s.add_dependency("CFPropertyList", ">= 2.0.0")
   s.add_dependency('uuid', "~> 2.3.1")
   s.add_dependency('rest-client', '~> 1.6.1')
   s.add_dependency('json')
