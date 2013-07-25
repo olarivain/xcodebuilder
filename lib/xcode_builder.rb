@@ -228,7 +228,7 @@ module XcodeBuilder
 
       print "Pod dry run..."
       podfile = if @configuration.podspec_file == nil then "" else @configuration.podspec_file end
-      result = system "pod spec lint #{podfile} --error-only"
+      result = system "pod spec lint #{podfile} --only-errors --local"
       raise "** Pod dry run failed **" if !result
       puts "Done"
     end
