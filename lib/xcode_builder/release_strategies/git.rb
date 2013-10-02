@@ -71,7 +71,7 @@ module XcodeBuilder
         print "Committing #{@configuration.info_plist} with version #{build_number}"
 
         stage_files [@configuration.info_plist]
-        commit_and_push_with_message "Preparing for next release..."
+        commit_and_push_with_message "[Xcodebuilder] Releasing build #{build_number}"
        
         puts "Done"
       end
