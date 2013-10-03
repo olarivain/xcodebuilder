@@ -123,22 +123,22 @@ module XcodeBuilder
 
     def package_macos_app
       # clean the pkg folder: create it if it doesn't exist yet
-      FileUtils.mkdir_p @configuration.package_destination_path unless  File.exists? @configuration.package_destination_path
+      FileUtils.mkdir_p "\"#{@configuration.package_destination_path}\"" unless  File.exists? "\"#{@configuration.package_destination_path}\""
       # and remove an existing app_bundle_path if it exists
-      FileUtils.rm_rf @configuration.app_bundle_path unless !File.exists? @configuration.app_bundle_path
+      FileUtils.rm_rf "\"#{@configuration.app_bundle_path}\"" unless !File.exists? "\"#{@configuration.app_bundle_path}\""
 
       # now we can properly copy the app bundle path over.
-      FileUtils.cp_r @configuration.built_app_path, "#{@configuration.package_destination_path}"
+      FileUtils.cp_r "\"#{@configuration.built_app_path}\"", "\"#{@configuration.package_destination_path}\""
     end
 
     def package_simulator_app
       # clean the pkg folder: create it if it doesn't exist yet
-      FileUtils.mkdir_p @configuration.package_destination_path unless  File.exists? @configuration.package_destination_path
+      FileUtils.mkdir_p "\"#{@configuration.package_destination_path}\"" unless  File.exists? "\"#{@configuration.package_destination_path}\""
       # and remove an existing app_bundle_path if it exists
-      FileUtils.rm_rf @configuration.app_bundle_path unless !File.exists? @configuration.app_bundle_path
+      FileUtils.rm_rf "\"#{@configuration.app_bundle_path}\"" unless !File.exists? "\"#{@configuration.app_bundle_path}\""
 
       # now we can properly copy the app bundle path over.
-      FileUtils.cp_r @configuration.built_app_path, "#{@configuration.package_destination_path}"
+      FileUtils.cp_r "\"#{@configuration.built_app_path}\"", "\"#{@configuration.package_destination_path}\""
     end
 
     # desc "Zips the dSYM to the package folder"
@@ -161,8 +161,8 @@ module XcodeBuilder
       cmd = []
       cmd << "zip"
       cmd << "-r"
-      cmd << dsym_target_path
-      cmd << "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM"
+      cmd << "\"#{dsym_target_path}\""
+      cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\""
               
       puts "Running #{cmd.join(" ")}" if @configuration.verbose
       cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
@@ -182,17 +182,17 @@ module XcodeBuilder
       cmd = []
       cmd << "zip"
       cmd << "-r"
-      cmd << @configuration.zipped_package_name
-      cmd << @configuration.dsym_name unless @configuration.skip_dsym
-      cmd << @configuration.ipa_name unless !@configuration.sdk.eql? "iphoneos"
-      cmd << "#{@configuration.app_name}.#{@configuration.app_extension}" unless !@configuration.sdk.eql? "macosx"
+      cmd << "\"#{@configuration.zipped_package_name}\""
+      cmd << "\"#{@configuration.dsym_name}\"" unless @configuration.skip_dsym
+      cmd << "\"#{@configuration.ipa_name}\"" unless !@configuration.sdk.eql? "iphoneos"
+      cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}\"" unless !@configuration.sdk.eql? "macosx"
       cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
 
       system cmd.join " "
 
       # delete all the artifacts but the .app. which will be needed by the automation builds
       File.delete @configuration.dsym_name unless !File.exists? @configuration.dsym_name
-      FileUtils.rm_rf "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM" unless !File.exists? "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM"
+      FileUtils.rm_rf "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\"" unless !File.exists? "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\""
 
       # back to working directory
       Dir.chdir current_dir
