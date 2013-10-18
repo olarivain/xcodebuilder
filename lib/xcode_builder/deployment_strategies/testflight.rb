@@ -24,12 +24,16 @@ module XcodeBuilder
           :api_token          => @configuration.api_token,
           :team_token         => @configuration.team_token,
           :file               => File.new(@configuration.ipa_path, 'rb'),
-          :dsym               => @configuration.upload_dsym ? File.new(@configuration.dsym_path, 'rb') : nil,
           :notes              => release_notes,
           :distribution_lists => (@configuration.distribution_lists || []).join(","),
           :notify             => @configuration.notify || false,
           :replace            => @configuration.replace || false
         }
+        
+        if @configuration.upload_dsym then
+          payload[:dsym] = File.new(@configuration.dsym_path, 'rb')
+        end
+
         if @configuration.verbose
           puts "ipa path: #{@configuration.ipa_path}"
           puts "release notes: #{release_notes}"
