@@ -23,6 +23,7 @@ module XcodeBuilder
         :app_extension => "app",
         :signing_identity => nil,
         :package_destination_path => "./pkg",
+        :zip_artifacts => false,
         :skip_dsym => false,
         :arch => nil,
         :skip_clean => ENV.fetch('SKIPCLEAN', false),
@@ -81,11 +82,11 @@ module XcodeBuilder
       if(@configuration.sdk.eql? "iphoneos") then
         package_ios_app
         package_dsym
-        package_artifact
+        package_artifact unless !@configuration.zip_artifacts
       elsif (@configuration.sdk.eql? "macosx") then
         package_macos_app
         package_dsym
-        package_artifact
+        package_artifact unless !@configuration.zip_artifacts
       else
         package_simulator_app
       end
@@ -168,6 +169,9 @@ module XcodeBuilder
       cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
       cmd = cmd.join(" ")
       system(cmd)
+
+      FileUtils.rm_rf "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM" unless !File.exists? "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM"
+
       # back to working directory
       Dir.chdir current_dir
     end
@@ -191,8 +195,9 @@ module XcodeBuilder
       system cmd.join " "
 
       # delete all the artifacts but the .app. which will be needed by the automation builds
-      File.delete @configuration.dsym_name unless !File.exists? @configuration.dsym_name
-      FileUtils.rm_rf "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\"" unless !File.exists? "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\""
+      puts "the paaaaath #{@configuration.dsym_name}"
+      FileUtils.rm_rf @configuration.dsym_name unless !File.exists? @configuration.dsym_name
+      FileUtils.rm_rf @configuration.ipa_name unless !File.exists? @configuration.ipa_name
 
       # back to working directory
       Dir.chdir current_dir
@@ -240,7 +245,7 @@ module XcodeBuilder
       cmd << "--allow-warnings"
 
       print "Pushing to CocoaPod..."
-      result = system (cmd.join " ")
+      result = system(cmd.join " ")
       raise "** Pod push failed **" if !result
       puts "Done."
     end
