@@ -175,6 +175,7 @@ module XcodeBuilder
 
       # back to working directory
       Dir.chdir current_dir
+      puts "Done."
     end
 
     # desc "Packages the final artifact (IPA + dSYM)"
@@ -196,7 +197,6 @@ module XcodeBuilder
       system cmd.join " "
 
       # delete all the artifacts but the .app. which will be needed by the automation builds
-      puts "the paaaaath #{@configuration.dsym_name}"
       FileUtils.rm_rf @configuration.dsym_name unless !File.exists? @configuration.dsym_name
       FileUtils.rm_rf @configuration.ipa_name unless !File.exists? @configuration.ipa_name
 
@@ -216,16 +216,18 @@ module XcodeBuilder
       pod_dry_run
 
       # tag source as needed
-      @configuration.release_strategy.tag_current_version
+      if @configuration.release_strategy != nil then
+        @configuration.release_strategy.tag_current_version
+      end
 
       # and push pod pod
       push_pod
 
-      # increment version numbers
-      if increment_pod_and_plist_number then
-          # and push appropriately
+      # ask release strategy to bump the release number
+      if @configuration.release_strategy != nil then
           @configuration.release_strategy.prepare_for_next_pod_release
       end
+      puts "Pod successfully released"
     end
 
     # runs a pod dry run before tagging
@@ -251,26 +253,6 @@ module XcodeBuilder
       puts "Done."
     end
 
-    def increment_pod_and_plist_number
-      old_build_number = @configuration.build_number
-      if !prepare_for_next_release then 
-        return false
-      end
-
-      # bump the spec version and save it
-      spec_content = File.open(@configuration.podspec_file, "r").read
-      old_version = "version = '#{old_build_number}'"
-      new_version = "version = '#{@configuration.build_number}'"
-
-      spec_content = spec_content.sub old_version, new_version
-
-      File.open(@configuration.podspec_file, "w") {|f|
-        f.write spec_content
-      }
-
-      true
-    end
-
     def deploy
       package
       @configuration.deployment_strategy.deploy
@@ -290,35 +272,10 @@ module XcodeBuilder
         @configuration.release_strategy.tag_current_version
       end
 
-      if prepare_for_next_release then
+      if @configuration.release_strategy != nil then
         @configuration.release_strategy.prepare_for_next_release
       end
-    end
-
-    def prepare_for_next_release
-      if !@configuration.increment_plist_version then
-        return false
-      end
-      
-      next_build_number = @configuration.next_build_number
-      if next_build_number == nil then
-        return false
-      end
-
-      print "Updating #{@configuration.info_plist} to version #{next_build_number}"
-
-      # read the plist and extract data
-      plist = CFPropertyList::List.new(:file => @configuration.info_plist_path)
-      data = CFPropertyList.native_types(plist.value)
-
-      # re inject new version number into the data
-      data["CFBundleVersion"] = next_build_number
-
-      # recreate the plist and save it
-      plist.value = CFPropertyList.guess(data)
-      plist.save(@configuration.info_plist_path, CFPropertyList::List::FORMAT_XML)
-      puts "Done"
-      return true
+      puts "App successfully released"
     end
   end
 end

@@ -60,6 +60,12 @@ module XcodeBuilder
     end
 
     def build_number
+      # we have a podspec file, so try to get the version out of that
+      if (podspec_file != nil)  && (File.exists? podspec_file) then
+        # get hte version out of the pod file
+        return build_number_from_podspec
+      end
+
       # no plist is found, return a nil version
       if (info_plist_path == nil)  || (!File.exists? info_plist_path) then
         return nil
@@ -69,6 +75,18 @@ module XcodeBuilder
       plist = CFPropertyList::List.new(:file => info_plist_path)
       data = CFPropertyList.native_types(plist.value)
       data["CFBundleVersion"]
+    end
+
+    def build_number_from_podspec
+      file = File.open(podspec_file, "r")
+      begin
+        version_line = file.gets
+      end while version_line.eql? "\n"
+
+      if match = version_line.match(/\s*version\s*=\s*["'](.*)["']\s*/i) 
+        version = match.captures
+      end
+      return version[0]
     end
 
     def next_build_number
@@ -82,6 +100,54 @@ module XcodeBuilder
       new_build_number = version_components.pop.to_i + 1
       version_components.push new_build_number.to_s
       version_components.join "."
+    end
+
+    def increment_pod_number
+      if !increment_plist_version then
+        return false
+      end
+
+      if podspec_file == nil then
+        return false
+      end
+
+      # keep the old build number around
+      old_build_number = build_number
+
+      # bump the spec version and save it
+      spec_content = File.open(podspec_file, "r").read
+      old_version = "version = '#{old_build_number}'"
+      new_version = "version = '#{next_build_number}'"
+
+      spec_content = spec_content.sub old_version, new_version
+
+      File.open(podspec_file, "w") {|f|
+        f.write spec_content
+      }
+
+      true
+    end
+
+    def increment_plist_number
+      if !increment_plist_version then
+        puts "increment is false"
+        return false
+      end
+
+      if info_plist == nil then
+        return false
+      end
+
+      # read the plist and extract data
+      plist = CFPropertyList::List.new(:file => info_plist_path)
+      data = CFPropertyList.native_types(plist.value)
+
+      # re inject new version number into the data
+      data["CFBundleVersion"] = next_build_number
+
+      # recreate the plist and save it
+      plist.value = CFPropertyList.guess(data)
+      plist.save(info_plist_path, CFPropertyList::List::FORMAT_XML)
     end
 
     def built_app_long_version_suffix

@@ -54,21 +54,31 @@ module XcodeBuilder
 
       def prepare_for_next_pod_release
         build_number = @configuration.build_number
+        next_build_number = @configuration.next_build_number
+
         raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
 
+        # increment the build number
+        @configuration.increment_pod_number
+
+        # commit
         print "Committing #{@configuration.info_plist} and #{@configuration.podspec_file} with version #{build_number}"
-        
         stage_files [@configuration.info_plist, @configuration.podspec_file]
-        commit_and_push_with_message "Preparing for next pod release..."
+        commit_and_push_with_message "Preparing for next pod release #{next_build_number}..."
        
         puts "Done"
       end
 
       def prepare_for_next_release
         build_number = @configuration.build_number
+        next_build_number = @configuration.next_build_number
+
         raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
         
-        print "Committing #{@configuration.info_plist} with version #{build_number}"
+        # increment the build number
+        @configuration.increment_plist_number
+        
+        print "Committing #{@configuration.info_plist} with version #{next_build_number}"
 
         stage_files [@configuration.info_plist]
         commit_and_push_with_message "[Xcodebuilder] Releasing build #{build_number}"
