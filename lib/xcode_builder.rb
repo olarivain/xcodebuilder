@@ -33,7 +33,8 @@ module XcodeBuilder
         :tag_vcs => false,
         :increment_plist_version => false,
         :pod_repo => nil,
-        :podspec_file => nil
+        :podspec_file => nil,
+        :upload_dsym => false
       )
       @namespace = namespace
       yield @configuration if block_given?
