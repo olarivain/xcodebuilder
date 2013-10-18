@@ -232,8 +232,6 @@ module XcodeBuilder
 
     # runs a pod dry run before tagging
     def pod_dry_run
-      clean unless @configuration.skip_clean
-
       print "Pod dry run..."
       result = system "pod lib lint --only-errors"
       raise "** Pod dry run failed **" if !result
