@@ -46,13 +46,14 @@ module XcodeBuilder
         
         print "Uploading build to TestFlight..."        
         
+        statusCode = 0
         begin
           response = RestClient.post(ENDPOINT, payload, :accept => :json)
+          statusCode = response.code
         rescue => e
-          response = e.response
         end
         
-        if (response.code == 201) || (response.code == 200)
+        if (statusCode == 201) || (statusCode == 200)
           puts "Done."
         else
           puts "Failed."
