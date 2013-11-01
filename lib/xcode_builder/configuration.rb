@@ -130,7 +130,6 @@ module XcodeBuilder
 
     def increment_plist_number
       if !increment_plist_version then
-        puts "increment is false"
         return false
       end
 

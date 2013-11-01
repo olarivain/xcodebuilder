@@ -95,7 +95,9 @@ module XcodeBuilder
 
     # desc "Builds an IPA from the built .app"
     def package_ios_app
-      print "Packaging and Signing..."          
+      print "Packaging and Signing..."        
+      if (@configuration.signing_identity != nil) then puts "" print "Signing identity: #{@configuration.signing_identity}" end
+      if (@configuration.provisioning_profile != nil) then puts "" print "Provisioning profile: #{@configuration.provisioning_profile}" end
       raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
@@ -109,7 +111,7 @@ module XcodeBuilder
       cmd << "-v '#{@configuration.built_app_path}'"
       cmd << "-o '#{@configuration.ipa_path}'"
       cmd << "--sign '#{@configuration.signing_identity}'" unless @configuration.signing_identity == nil
-      cmd << "--embed '#{@configuration.provisioning_profile}'"
+      cmd << "--embed '#{File.expand_path(@configuration.provisioning_profile)}'" unless @configuration.provisioning_profile == nil
       if @configuration.xcrun_extra_args then
         cmd.concat @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? Array
         cmd << @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? String
