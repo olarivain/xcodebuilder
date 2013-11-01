@@ -96,8 +96,14 @@ module XcodeBuilder
     # desc "Builds an IPA from the built .app"
     def package_ios_app
       print "Packaging and Signing..."        
-      if (@configuration.signing_identity != nil) then puts "" print "Signing identity: #{@configuration.signing_identity}" end
-      if (@configuration.provisioning_profile != nil) then puts "" print "Provisioning profile: #{@configuration.provisioning_profile}" end
+      if (@configuration.signing_identity != nil) then 
+        puts "" 
+        print "Signing identity: #{@configuration.signing_identity}" 
+      end
+      if (@configuration.provisioning_profile != nil) then 
+        puts "" 
+        print "Provisioning profile: #{@configuration.provisioning_profile}" 
+      end
       raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path

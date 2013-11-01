@@ -27,7 +27,7 @@ module XcodeBuilder
       
       if xcodebuild_extra_args
           args.concat xcodebuild_extra_args if xcodebuild_extra_args.is_a? Array
-          args << "#{xcodebuild_extra_args}" if xcodears.is_a? String
+          args << "#{xcodebuild_extra_args}" if xcodebuild_extra_args.is_a? String
       end
       
       args

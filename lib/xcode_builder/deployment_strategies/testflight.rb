@@ -51,7 +51,7 @@ module XcodeBuilder
           response = RestClient.post(ENDPOINT, payload, :accept => :json)
           statusCode = response.code
         rescue => e
-          puts "TestFlight upload failed with exception:\n#{e}"
+          puts "TestFlight upload failed with exception:\n#{e}Response\n#{e.response}"
         end
         
         if (statusCode == 201) || (statusCode == 200)
