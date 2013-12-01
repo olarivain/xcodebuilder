@@ -11,7 +11,7 @@ module XcodeBuilder
 
     def initialize(namespace = :xcbuild, &block)
       @configuration = Configuration.new(
-        :configuration => "Adhoc",
+        :configuration => "Release",
         :build_dir => "build",
         :xcodebuild_extra_args => nil,
         :xcrun_extra_args => nil,
