@@ -10,7 +10,7 @@ module XcodeBuilder
         end
 
         if @branch == nil then
-            @branch = "master"
+            @branch = `git rev-parse --abbrev-ref HEAD`.gsub("\n", "")
         end
 
         if @tag_name == nil then
@@ -31,6 +31,13 @@ module XcodeBuilder
         cmd << "2>&1 %s git.output" % (@configuration.verbose ? '| tee' : '>')
         result = system(cmd.join " ")
         raise "Could not tag repository" unless result
+        puts
+        puts "Done"
+
+        puts
+        puts "Pulling from remote repo before pushing..."
+        result = system("git pull #{@origin} #{@branch}")
+        raise "Couldn't merge from #{@origin} #{@branch} - did somebody push a conflicting commit while I was building?" unless result
         puts
         puts "Done"
 
