@@ -69,8 +69,8 @@ module XcodeBuilder
         @configuration.increment_pod_number
 
         # commit
-        print "Committing #{@configuration.info_plist} and #{@configuration.podspec_file} with version #{build_number}"
-        stage_files [@configuration.info_plist, @configuration.podspec_file]
+        print "Committing #{@configuration.podspec_file} with version #{build_number}"
+        stage_files [@configuration.podspec_file]
         commit_and_push_with_message "Preparing for next pod release #{next_build_number}..."
        
         puts "Done"

@@ -251,6 +251,7 @@ module XcodeBuilder
       cmd << "pod"
       cmd << "push"
       cmd << @configuration.pod_repo
+      cmd << @configuration.podspec_file
       cmd << "--allow-warnings"
 
       print "Pushing to CocoaPod..."
