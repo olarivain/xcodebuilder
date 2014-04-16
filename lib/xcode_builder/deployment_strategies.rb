@@ -29,11 +29,11 @@ module XcodeBuilder
     private
 
     def self.strategies
-      {:web => Web, :testflight => TestFlight}
+      {:web => Web, :testflight => TestFlight, :buildstorage => BuildStorage}
     end
   end
 end
 
 require File.dirname(__FILE__) + '/deployment_strategies/web'
 require File.dirname(__FILE__) + '/deployment_strategies/testflight'
-
+require File.dirname(__FILE__) + '/deployment_strategies/buildstorage'
