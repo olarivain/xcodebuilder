@@ -7,7 +7,7 @@ module XcodeBuilder
       end
       
       def deploy
-        puts "Deploying to the web server"
+        puts "Deploying to the web server : '#{@configuration.server_url}'"
         cmd = []
         cmd.push "curl"
         cmd.push "--user #{@configuration.server_user}:#{@configuration.server_password}"
