@@ -29,11 +29,11 @@ module XcodeBuilder
     private
 
     def self.strategies
-      {:web => Web, :testflight => TestFlight}
+      {:scp => SCP, :testflight => TestFlight, :web => Web}
     end
   end
 end
 
-require File.dirname(__FILE__) + '/deployment_strategies/web'
+require File.dirname(__FILE__) + '/deployment_strategies/scp'
 require File.dirname(__FILE__) + '/deployment_strategies/testflight'
-
+require File.dirname(__FILE__) + '/deployment_strategies/web'
