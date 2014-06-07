@@ -13,7 +13,7 @@ spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
   s.name              = "xcodebuilder"
-  s.version           = "0.0.20"
+  s.version           = "0.0.21"
   s.summary           = "A set of Rake tasks and utilities for building and releasing xcode projects"
   s.authors           = ["Olivier Larivain"]
   s.email             = ["olarivain@gmail.com"]
@@ -33,6 +33,8 @@ spec = Gem::Specification.new do |s|
   s.add_dependency('uuid', "~> 2.3.1")
   s.add_dependency('rest-client', '~> 1.6.1')
   s.add_dependency('json')
+  s.add_dependency('cocoapods')
+  s.add_dependency('xcpretty')
 
   # If your tests use any gems, include them here
   # s.add_development_dependency("mocha") # for example
