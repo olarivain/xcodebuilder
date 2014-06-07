@@ -181,12 +181,6 @@ module XcodeBuilder
         return "#{dir}/Build/Products" if File.read( File.join(dir, "info.plist") ).match workspace_file_path
       end
     end
-    
-    
-    def derived_build_dir_from_build_output
-      output = BuildOutputParser.new(File.read("build.output"))
-      output.build_output_dir  
-    end
 
     def zipped_package_name
       "#{app_name}#{built_app_long_version_suffix}.zip"

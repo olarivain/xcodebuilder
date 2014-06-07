@@ -69,8 +69,8 @@ module XcodeBuilder
       clean unless @configuration.skip_clean
 
       print "Building Project..."
-      xcodebuild @configuration.build_arguments, "build"
-      raise "** BUILD FAILED **" if BuildOutputParser.new(File.read("build.output")).failed?
+      success = xcodebuild @configuration.build_arguments, "build"
+      raise "** BUILD FAILED **" unless success
       puts "Done"
     end
     
@@ -114,7 +114,7 @@ module XcodeBuilder
       cmd << "/usr/bin/xcrun"
       cmd << "-sdk #{@configuration.sdk}"
       cmd << "PackageApplication"
-      cmd << "-v '#{@configuration.built_app_path}'"
+      cmd << "'#{@configuration.built_app_path}'"
       cmd << "-o '#{@configuration.ipa_path}'"
       cmd << "--sign '#{@configuration.signing_identity}'" unless @configuration.signing_identity == nil
       cmd << "--embed '#{File.expand_path(@configuration.provisioning_profile)}'" unless @configuration.provisioning_profile == nil
@@ -123,7 +123,7 @@ module XcodeBuilder
         cmd << @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? String
       end
       puts "Running #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+      cmd << "2>&1 /dev/null"
       cmd = cmd.join(" ")
       system(cmd)
       
@@ -175,7 +175,7 @@ module XcodeBuilder
       cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\""
               
       puts "Running #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
+      cmd << "2>&1 /dev/null"
       cmd = cmd.join(" ")
       system(cmd)
 
@@ -200,7 +200,7 @@ module XcodeBuilder
       cmd << "\"#{@configuration.dsym_name}\"" unless @configuration.skip_dsym
       cmd << "\"#{@configuration.ipa_name}\"" unless !@configuration.sdk.eql? "iphoneos"
       cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}\"" unless !@configuration.sdk.eql? "macosx"
-      cmd << "2>&1 %s ../build.output" % (@configuration.verbose ? '| tee' : '>')
+      cmd << "2>&1 /dev/null"
 
       system cmd.join " "
 
@@ -248,8 +248,7 @@ module XcodeBuilder
 
     def push_pod
       cmd = []
-      cmd << "pod"
-      cmd << "push"
+      cmd << "pod repo push"
       cmd << @configuration.pod_repo
       cmd << @configuration.podspec_file
       cmd << "--allow-warnings"
