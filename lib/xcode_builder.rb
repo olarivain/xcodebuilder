@@ -50,7 +50,7 @@ module XcodeBuilder
       cmd << "/usr/bin/xcodebuild"
       cmd.concat args
       puts "Running: #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "2>&1 %s build.output" % (@configuration.verbose ? '| tee' : '>')
+      cmd << "| xcpretty && exit ${PIPESTATUS[0]}"
       cmd = cmd.join(" ")
       system(cmd)
     end

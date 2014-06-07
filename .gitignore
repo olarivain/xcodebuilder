@@ -2,4 +2,3 @@ pkg
 website/_site
 *.gem
 *.DS_Store
-xcodebuilder.gemspec
