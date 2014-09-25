@@ -76,22 +76,7 @@ module XcodeBuilder
         puts "Done"
       end
 
-      def prepare_for_next_release
-        build_number = @configuration.build_number
-        next_build_number = @configuration.next_build_number
 
-        raise "build number cannot be empty on release" unless  (build_number != nil) && (!build_number.empty?) 
-        
-        # increment the build number
-        @configuration.increment_plist_number
-        
-        print "Committing #{@configuration.info_plist} with version #{next_build_number}"
-
-        stage_files [@configuration.info_plist]
-        commit_and_push_with_message "[Xcodebuilder] Releasing build #{build_number}"
-       
-        puts "Done"
-      end
 
       def stage_files files
         cmd = []

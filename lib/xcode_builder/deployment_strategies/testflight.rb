@@ -30,20 +30,6 @@ module XcodeBuilder
           :replace            => @configuration.replace || false
         }
         
-        if @configuration.upload_dsym then
-          payload[:dsym] = File.new(@configuration.dsym_path, 'rb')
-        end
-
-        if @configuration.verbose
-          puts "ipa path: #{@configuration.ipa_path}"
-          puts "release notes: #{release_notes}"
-        end
-        
-        if @configuration.dry_run 
-          puts '** Dry Run - No action here! **'
-          return
-        end
-        
         print "Uploading build to TestFlight..."        
         
         statusCode = 0

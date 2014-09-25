@@ -13,28 +13,20 @@ module XcodeBuilder
       @configuration = Configuration.new(
         :configuration => "Release",
         :build_dir => "build",
-        :xcodebuild_extra_args => nil,
-        :xcrun_extra_args => nil,
         :project_file_path => nil,
         :workspace_file_path => nil,
-        :sdk => "iphoneos",
         :scheme => nil,
         :app_name => nil,
-        :app_extension => "app",
         :signing_identity => nil,
         :package_destination_path => "./pkg",
-        :zip_artifacts => false,
-        :skip_dsym => false,
-        :arch => nil,
-        :skip_clean => ENV.fetch('SKIPCLEAN', false),
-        :verbose => ENV.fetch('VERBOSE', false),
+        :skip_clean => false,
+        :verbose => false,
         :info_plist => nil,
         :scm => nil,
-        :tag_vcs => false,
-        :increment_plist_version => false,
         :pod_repo => nil,
         :podspec_file => nil,
-        :upload_dsym => false
+        :xcodebuild_extra_args => nil,
+        :xcrun_extra_args => nil,
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -47,7 +39,7 @@ module XcodeBuilder
     def xcodebuild(*args)
       # we're using tee as we still want to see our build output on screen
       cmd = []
-      cmd << "/usr/bin/xcodebuild"
+      cmd << "xcrun xcodebuild"
       cmd.concat args
       puts "Running: #{cmd.join(" ")}" if @configuration.verbose
       cmd << "| xcpretty && exit ${PIPESTATUS[0]}"
@@ -68,6 +60,9 @@ module XcodeBuilder
     def build
       clean unless @configuration.skip_clean
 
+      # update the long version number with the date
+      @configuration.timestamp_plist
+
       print "Building Project..."
       success = xcodebuild @configuration.build_arguments, "build"
       raise "** BUILD FAILED **" unless success
@@ -76,35 +71,12 @@ module XcodeBuilder
     
     # desc "Package the release as a distributable archive"
     def package
-      build
-      # there is no need for IPA or dSYM unless we have a device/macosx build,
-      # so do that part only on iphoneos/macosx SDKs
-      #
-      if(@configuration.sdk.eql? "iphoneos") then
-        package_ios_app
-        package_dsym
-        package_artifact unless !@configuration.zip_artifacts
-      elsif (@configuration.sdk.eql? "macosx") then
-        package_macos_app
-        package_dsym
-        package_artifact unless !@configuration.zip_artifacts
-      else
-        package_simulator_app
-      end
-    end
-
-    # desc "Builds an IPA from the built .app"
-    def package_ios_app
       print "Packaging and Signing..."        
       if (@configuration.signing_identity != nil) then 
         puts "" 
         print "Signing identity: #{@configuration.signing_identity}" 
       end
-      if (@configuration.provisioning_profile != nil) then 
-        puts "" 
-        print "Provisioning profile: #{@configuration.provisioning_profile}" 
-      end
-      raise "** PACKAGE FAILED ** No Signing Identity Found" unless @configuration.signing_identity
+
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
@@ -112,107 +84,41 @@ module XcodeBuilder
       # Construct the IPA and Sign it
       cmd = []
       cmd << "/usr/bin/xcrun"
-      cmd << "-sdk #{@configuration.sdk}"
+      cmd << "-sdk iphoneos"
       cmd << "PackageApplication"
       cmd << "'#{@configuration.built_app_path}'"
       cmd << "-o '#{@configuration.ipa_path}'"
       cmd << "--sign '#{@configuration.signing_identity}'" unless @configuration.signing_identity == nil
-      cmd << "--embed '#{File.expand_path(@configuration.provisioning_profile)}'" unless @configuration.provisioning_profile == nil
+
       if @configuration.xcrun_extra_args then
         cmd.concat @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? Array
         cmd << @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? String
       end
+
       puts "Running #{cmd.join(" ")}" if @configuration.verbose
       cmd << "2>&1 /dev/null"
       cmd = cmd.join(" ")
       system(cmd)
       
-      # zip the dSYM over to the dist folder
-      puts "Done"
-    end
-
-    def package_macos_app
-      # clean the pkg folder: create it if it doesn't exist yet
-      FileUtils.mkdir_p "\"#{@configuration.package_destination_path}\"" unless  File.exists? "\"#{@configuration.package_destination_path}\""
-      # and remove an existing app_bundle_path if it exists
-      FileUtils.rm_rf "\"#{@configuration.app_bundle_path}\"" unless !File.exists? "\"#{@configuration.app_bundle_path}\""
-
-      # now we can properly copy the app bundle path over.
-      FileUtils.cp_r "\"#{@configuration.built_app_path}\"", "\"#{@configuration.package_destination_path}\""
-    end
-
-    def package_simulator_app
-      # clean the pkg folder: create it if it doesn't exist yet
-      FileUtils.mkdir_p "\"#{@configuration.package_destination_path}\"" unless  File.exists? "\"#{@configuration.package_destination_path}\""
-      # and remove an existing app_bundle_path if it exists
-      FileUtils.rm_rf "\"#{@configuration.app_bundle_path}\"" unless !File.exists? "\"#{@configuration.app_bundle_path}\""
-
-      # now we can properly copy the app bundle path over.
-      FileUtils.cp_r "\"#{@configuration.built_app_path}\"", "\"#{@configuration.package_destination_path}\""
-    end
-
-    # desc "Zips the dSYM to the package folder"
-    def package_dsym
-      return if @configuration.skip_dsym
-      print "Packaging dSYM..."  
-
-      # copy the dSYM to the pkg destination
-      FileUtils.cp_r @configuration.built_dsym_path, @configuration.package_destination_path
-
-      # the version is pulled from a path relative location, so fetch BEFORE
-      # we Dir.chdir
-      dsym_name = @configuration.dsym_name
-      dsym_target_path = @configuration.dsym_path
-
-      # move to pkg destination and zip the dSYM
-      current_dir = Dir.pwd
-      Dir.chdir @configuration.package_destination_path
-
-      cmd = []
-      cmd << "zip"
-      cmd << "-r"
-      cmd << "\"#{dsym_target_path}\""
-      cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}.dSYM\""
-              
-      puts "Running #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "2>&1 /dev/null"
-      cmd = cmd.join(" ")
-      system(cmd)
-
-      FileUtils.rm_rf "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM" unless !File.exists? "#{@configuration.app_name}.#{@configuration.app_extension}.dSYM"
-
-      # back to working directory
-      Dir.chdir current_dir
+      puts ""
       puts "Done."
     end
 
-    # desc "Packages the final artifact (IPA + dSYM)"
-    def package_artifact
-      # keep track of current working dir
-      current_dir = Dir.pwd
-      Dir.chdir @configuration.package_destination_path
+    def deploy
+      package
+      @configuration.deployment_strategy.deploy
+    end
 
-      # zip final package
-      cmd = []
-      cmd << "zip"
-      cmd << "-r"
-      cmd << "\"#{@configuration.zipped_package_name}\""
-      cmd << "\"#{@configuration.dsym_name}\"" unless @configuration.skip_dsym
-      cmd << "\"#{@configuration.ipa_name}\"" unless !@configuration.sdk.eql? "iphoneos"
-      cmd << "\"#{@configuration.app_name}.#{@configuration.app_extension}\"" unless !@configuration.sdk.eql? "macosx"
-      cmd << "2>&1 /dev/null"
+    def release
+      # deploy or package depending on configuration
+      if @configuration.deployment_strategy then
+        deploy
+      else 
+        package
+      end
 
-      system cmd.join " "
-
-      # delete all the artifacts but the .app. which will be needed by the automation builds
-      FileUtils.rm_rf @configuration.dsym_name unless !File.exists? @configuration.dsym_name
-      FileUtils.rm_rf @configuration.ipa_name unless !File.exists? @configuration.ipa_name
-
-      # back to working directory
-      Dir.chdir current_dir
-
-      puts "Done"
-      puts "ZIP package: #{@configuration.zipped_package_name}"
+      puts ""
+      puts "App successfully released"
     end
 
     # desc "For CocoaPod libraries: dry run, tags SCM, pushes to cocoapod and increments build number"
@@ -257,31 +163,6 @@ module XcodeBuilder
       result = system(cmd.join " ")
       raise "** Pod push failed **" if !result
       puts "Done."
-    end
-
-    def deploy
-      package
-      @configuration.deployment_strategy.deploy
-    end
-
-    def release
-      # deploy or package depending on configuration
-      if @configuration.deployment_strategy then
-        deploy
-      else 
-        package
-      end
-
-      # tag first, then prepare for next release and 
-      # commit the updated plist
-      if @configuration.tag_vcs then
-        @configuration.release_strategy.tag_current_version
-      end
-
-      if @configuration.release_strategy != nil then
-        @configuration.release_strategy.prepare_for_next_release
-      end
-      puts "App successfully released"
     end
   end
 end
