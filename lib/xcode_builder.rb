@@ -71,6 +71,8 @@ module XcodeBuilder
     
     # desc "Package the release as a distributable archive"
     def package
+      build
+      
       print "Packaging and Signing..."        
       if (@configuration.signing_identity != nil) then 
         puts "" 

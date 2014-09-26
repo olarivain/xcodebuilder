@@ -62,7 +62,7 @@ module XcodeBuilder
       # read the plist and extract data
       plist = CFPropertyList::List.new(:file => info_plist_path)
       data = CFPropertyList.native_types(plist.value)
-      data["CFBundleVersion"]
+      data["CFBundleShortVersionString"]
     end
 
     def build_number_from_podspec
@@ -126,7 +126,7 @@ module XcodeBuilder
       data = CFPropertyList.native_types(plist.value)
 
       # re inject new version number into the data
-      data["CFBundleVersion"] = build_number + " " + DateTime.now.strftime("%Y-%m-%d %k:%M")
+      data["CFBundleVersion"] = DateTime.now.strftime("%Y-%m-%d %k:%M")
 
       # recreate the plist and save it
       plist.value = CFPropertyList.guess(data)
