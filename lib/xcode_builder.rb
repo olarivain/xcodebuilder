@@ -27,6 +27,7 @@ module XcodeBuilder
         :podspec_file => nil,
         :xcodebuild_extra_args => nil,
         :xcrun_extra_args => nil,
+        :timestamp_build => nil,
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -61,7 +62,7 @@ module XcodeBuilder
       clean unless @configuration.skip_clean
 
       # update the long version number with the date
-      @configuration.timestamp_plist
+      @configuration.timestamp_plist if @configuration.timestamp_build
 
       print "Building Project..."
       success = xcodebuild @configuration.build_arguments, "build"
@@ -72,7 +73,7 @@ module XcodeBuilder
     # desc "Package the release as a distributable archive"
     def package
       build
-      
+
       print "Packaging and Signing..."        
       if (@configuration.signing_identity != nil) then 
         puts "" 

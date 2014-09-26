@@ -13,7 +13,7 @@ spec = Gem::Specification.new do |s|
 
   # Change these as appropriate
   s.name              = "xcodebuilder"
-  s.version           = "0.1.0"
+  s.version           = "0.1.1"
   s.summary           = "A set of Rake tasks and utilities for building and releasing xcode projects"
   s.authors           = ["Olivier Larivain"]
   s.email             = ["olarivain@gmail.com"]
