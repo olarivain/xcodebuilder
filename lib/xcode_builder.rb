@@ -1,6 +1,7 @@
 require 'rake/tasklib'
 require 'ostruct'
 require 'fileutils'
+require 'open3'
 require 'cfpropertylist'
 require File.dirname(__FILE__) + '/xcode_builder/configuration'
 require File.dirname(__FILE__) + '/xcode_builder/build_output_parser'
@@ -39,15 +40,20 @@ module XcodeBuilder
       @configuration.info_plist = File.expand_path @configuration.info_plist unless @configuration.info_plist == nil
     end
 
-    def xcodebuild(*args)
+    def xcodebuild(capture, *args)
       # we're using tee as we still want to see our build output on screen
       cmd = []
       cmd << "xcrun xcodebuild"
       cmd.concat args
       puts "Running: #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "| xcpretty && exit ${PIPESTATUS[0]}"
       cmd = cmd.join(" ")
-      system(cmd)
+
+      if capture
+        Open3.capture3(cmd)
+      else
+        cmd += "| xcpretty && exit ${PIPESTATUS[0]}"
+        system(cmd)
+      end
     end
     
     # desc "Clean the Build"
@@ -67,8 +73,9 @@ module XcodeBuilder
       @configuration.timestamp_plist if @configuration.timestamp_build
 
       print "Building Project..."
-      success = xcodebuild @configuration.build_arguments, "build"
-      raise "** BUILD FAILED **" unless success
+
+      success = xcodebuild(false, @configuration.build_arguments, "build")
+      raise "** BUILD FAILED **}" unless success
       puts "Done"
     end
     
