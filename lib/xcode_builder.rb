@@ -64,7 +64,28 @@ module XcodeBuilder
         puts "Done"
       end
     end
-    
+
+    # desc "Get xcode settings"
+    def settings
+      print "Getting Settings..." << "\n"
+      stdout, stderr, status = xcodebuild(true, @configuration.build_arguments, "-showBuildSettings")
+
+      target = nil
+      stdout.split(/\n/).inject(Hash.new) do |hash, line|
+        match = line.match(/Build settings for action build and target \"?([^":]+)/)
+        if match
+          target = match[1]
+          hash[target] = Hash.new
+        elsif target
+          parts = line.split('=')
+          unless parts.empty?
+            hash[target][parts.first.strip!] = parts.last.strip!
+          end
+        end
+        hash
+      end
+    end
+
     # desc "Build the beta release of the app"
     def build
       clean unless @configuration.skip_clean
