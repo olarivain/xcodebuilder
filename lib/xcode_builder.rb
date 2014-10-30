@@ -111,7 +111,6 @@ module XcodeBuilder
       end
 
       # trash and create the dist IPA path if needed
-      FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
     
       # Construct the IPA and Sign it
