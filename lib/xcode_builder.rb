@@ -12,7 +12,7 @@ module XcodeBuilder
     def initialize(namespace = :xcbuild, &block)
       @configuration = Configuration.new(
         :configuration => "Release",
-        :build_dir => "build",
+        :build_dir => nil,
         :project_file_path => nil,
         :workspace_file_path => nil,
         :scheme => nil,
