@@ -22,7 +22,6 @@ module XcodeBuilder
       end
 
       args << "-sdk #{sdk}"
-      args << "-arch #{arch}" if arch
 
       args << "-configuration '#{configuration}'"
       args << "BUILD_DIR=#{File.expand_path build_dir}" if build_dir

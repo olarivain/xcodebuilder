@@ -24,7 +24,6 @@ module XcodeBuilder
         :verbose => false,
         :info_plist => nil,
         :scm => nil,
-        :arch => nil,
         :sdk => "iphoneos",
         :pod_repo => nil,
         :podspec_file => nil,
