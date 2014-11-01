@@ -66,7 +66,7 @@ module XcodeBuilder
 
     # desc "Get xcode settings"
     def settings
-      print "Getting Settings..." << "\n"
+      print "Getting Build Settings..." << "\n"
       stdout, stderr, status = xcodebuild(true, @configuration.build_arguments, "-showBuildSettings")
 
       target = nil
