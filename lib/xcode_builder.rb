@@ -69,6 +69,11 @@ module XcodeBuilder
       print "Getting Build Settings..." << "\n"
       stdout, stderr, status = xcodebuild(true, @configuration.build_arguments, "-showBuildSettings")
 
+      unless stderr.empty?
+        STDERR << stderr
+        return nil
+      end
+
       target = nil
       stdout.split(/\n/).inject(Hash.new) do |hash, line|
         match = line.match(/Build settings for action build and target \"?([^":]+)/)
