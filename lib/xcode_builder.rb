@@ -59,7 +59,7 @@ module XcodeBuilder
     def clean
       unless @configuration.skip_clean
         print "Cleaning Project..."
-        xcodebuild @configuration.build_arguments, "clean"
+        xcodebuild(false, @configuration.build_arguments, "clean")
         puts "Done"
       end
     end
@@ -70,8 +70,7 @@ module XcodeBuilder
       stdout, stderr, status = xcodebuild(true, @configuration.build_arguments, "-showBuildSettings")
 
       unless stderr.empty?
-        STDERR << stderr
-        return nil
+        raise(stderr)
       end
 
       target = nil
