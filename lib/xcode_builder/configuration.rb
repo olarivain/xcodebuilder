@@ -21,10 +21,10 @@ module XcodeBuilder
         args << "-project '#{project_file_path}'" if project_file_path
       end
 
-      args << "-sdk iphoneos"
-      
+      args << "-sdk #{sdk}"
+
       args << "-configuration '#{configuration}'"
-      args << "BUILD_DIR=#{File.expand_path build_dir}"
+      args << "BUILD_DIR=#{File.expand_path build_dir}" if build_dir
       
       if xcodebuild_extra_args
           args.concat xcodebuild_extra_args if xcodebuild_extra_args.is_a? Array

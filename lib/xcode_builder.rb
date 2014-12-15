@@ -1,6 +1,7 @@
 require 'rake/tasklib'
 require 'ostruct'
 require 'fileutils'
+require 'open3'
 require 'cfpropertylist'
 require File.dirname(__FILE__) + '/xcode_builder/configuration'
 require File.dirname(__FILE__) + '/xcode_builder/build_output_parser'
@@ -12,7 +13,7 @@ module XcodeBuilder
     def initialize(namespace = :xcbuild, &block)
       @configuration = Configuration.new(
         :configuration => "Release",
-        :build_dir => "build",
+        :build_dir => nil,
         :project_file_path => nil,
         :workspace_file_path => nil,
         :scheme => nil,
@@ -23,6 +24,7 @@ module XcodeBuilder
         :verbose => false,
         :info_plist => nil,
         :scm => nil,
+        :sdk => "iphoneos",
         :pod_repo => nil,
         :podspec_file => nil,
         :xcodebuild_extra_args => nil,
@@ -37,26 +39,56 @@ module XcodeBuilder
       @configuration.info_plist = File.expand_path @configuration.info_plist unless @configuration.info_plist == nil
     end
 
-    def xcodebuild(*args)
+    def xcodebuild(capture, *args)
       # we're using tee as we still want to see our build output on screen
       cmd = []
       cmd << "xcrun xcodebuild"
       cmd.concat args
       puts "Running: #{cmd.join(" ")}" if @configuration.verbose
-      cmd << "| xcpretty && exit ${PIPESTATUS[0]}"
       cmd = cmd.join(" ")
-      system(cmd)
+
+      if capture
+        Open3.capture3(cmd)
+      else
+        cmd += "| xcpretty && exit ${PIPESTATUS[0]}"
+        system(cmd)
+      end
     end
     
     # desc "Clean the Build"
     def clean
       unless @configuration.skip_clean
         print "Cleaning Project..."
-        xcodebuild @configuration.build_arguments, "clean"
+        xcodebuild(false, @configuration.build_arguments, "clean")
         puts "Done"
       end
     end
-    
+
+    # desc "Get xcode settings"
+    def settings
+      print "Getting Build Settings..." << "\n"
+      stdout, stderr, status = xcodebuild(true, @configuration.build_arguments, "-showBuildSettings")
+
+      unless stderr.empty?
+        raise(stderr)
+      end
+
+      target = nil
+      stdout.split(/\n/).inject(Hash.new) do |hash, line|
+        match = line.match(/Build settings for action build and target \"?([^":]+)/)
+        if match
+          target = match[1]
+          hash[target] = Hash.new
+        elsif target
+          parts = line.split('=')
+          unless parts.empty?
+            hash[target][parts.first.strip!] = parts.last.strip!
+          end
+        end
+        hash
+      end
+    end
+
     # desc "Build the beta release of the app"
     def build
       clean unless @configuration.skip_clean
@@ -65,8 +97,9 @@ module XcodeBuilder
       @configuration.timestamp_plist if @configuration.timestamp_build
 
       print "Building Project..."
-      success = xcodebuild @configuration.build_arguments, "build"
-      raise "** BUILD FAILED **" unless success
+
+      success = xcodebuild(false, @configuration.build_arguments, "build")
+      raise "** BUILD FAILED **}" unless success
       puts "Done"
     end
     
@@ -81,7 +114,6 @@ module XcodeBuilder
       end
 
       # trash and create the dist IPA path if needed
-      FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
     
       # Construct the IPA and Sign it
