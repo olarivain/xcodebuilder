@@ -29,9 +29,11 @@ module XcodeBuilder
     private
 
     def self.strategies
-      {:testflight => TestFlight}
+      {:testflight => TestFlight,
+        :hockeyapp => HockeyApp}
     end
   end
 end
 
 require File.dirname(__FILE__) + '/deployment_strategies/testflight'
+require File.dirname(__FILE__) + '/deployment_strategies/hockeyapp'
