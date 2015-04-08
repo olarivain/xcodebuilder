@@ -28,6 +28,7 @@ module XcodeBuilder
         :xcodebuild_extra_args => nil,
         :xcrun_extra_args => nil,
         :timestamp_build => nil,
+        :pod_repo_sources => nil
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -46,6 +47,15 @@ module XcodeBuilder
       cmd << "| xcpretty && exit ${PIPESTATUS[0]}"
       cmd = cmd.join(" ")
       system(cmd)
+    end
+
+    def resolved_repos
+      master_repo = ["https://github.com/CocoaPods/Specs.git"]
+      if @configuration.pod_repo_sources == nil then
+        return master_repo
+      end
+
+      return master_repo + Array(@configuration.pod_repo_sources)
     end
     
     # desc "Clean the Build"
@@ -150,7 +160,8 @@ module XcodeBuilder
     # runs a pod dry run before tagging
     def pod_dry_run
       print "Pod dry run..."
-      result = system "pod lib lint #{@configuration.podspec_file} --allow-warnings"
+      repos = resolved_repos.join ","
+      result = system "pod lib lint #{@configuration.podspec_file} --allow-warnings --sources=#{repos}"
       raise "** Pod dry run failed **" if !result
       puts "Done"
     end
