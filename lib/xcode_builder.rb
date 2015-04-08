@@ -150,7 +150,7 @@ module XcodeBuilder
     # runs a pod dry run before tagging
     def pod_dry_run
       print "Pod dry run..."
-      result = system "pod lib lint #{@configuration.podspec_file} --only-errors"
+      result = system "pod lib lint #{@configuration.podspec_file} --allow-warnings"
       raise "** Pod dry run failed **" if !result
       puts "Done"
     end
