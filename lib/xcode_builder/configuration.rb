@@ -38,14 +38,6 @@ module XcodeBuilder
       raise ArgumentError, "app_name or target must be set in the BetaBuilder configuration block" if app_name.nil?
       "#{app_name}.app"
     end
-    
-    def info_plist_path
-      if info_plist != nil then 
-        File.expand_path info_plist
-      else 
-        nil
-      end
-    end
 
     def build_number
       # we have a podspec file, so try to get the version out of that
@@ -53,16 +45,7 @@ module XcodeBuilder
         # get hte version out of the pod file
         return build_number_from_podspec
       end
-
-      # no plist is found, return a nil version
-      if (info_plist_path == nil)  || (!File.exists? info_plist_path) then
-        return nil
-      end
-
-      # read the plist and extract data
-      plist = CFPropertyList::List.new(:file => info_plist_path)
-      data = CFPropertyList.native_types(plist.value)
-      data["CFBundleShortVersionString"]
+      return nil
     end
 
     def build_number_from_podspec
@@ -121,19 +104,19 @@ module XcodeBuilder
         return false
       end
 
-      # read the plist and extract data
-      plist = CFPropertyList::List.new(:file => info_plist_path)
-      data = CFPropertyList.native_types(plist.value)
+      Array(info_plist).each {|current_plist|
+        # read the plist and extract data
+        plist = CFPropertyList::List.new(:file => File.expand_path(current_plist))
+        data = CFPropertyList.native_types(plist.value)
 
-      # re inject new version number into the data
-      data["CFBundleVersion"] = DateTime.now.strftime("%Y-%m-%d %k:%M")
+        # re inject new version number into the data
+        data["CFBundleVersion"] = DateTime.now.strftime("%Y-%m-%d %k:%M")
 
-      # recreate the plist and save it
-      plist.value = CFPropertyList.guess(data)
-      plist.save(info_plist_path, CFPropertyList::List::FORMAT_XML)
+        # recreate the plist and save it
+        plist.value = CFPropertyList.guess(data)
+        plist.save(current_plist, CFPropertyList::List::FORMAT_XML)
+      }
     end
-
-
 
     def ipa_name
       prefix = app_name == nil ? target : app_name

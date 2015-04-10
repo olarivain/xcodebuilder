@@ -32,10 +32,6 @@ module XcodeBuilder
       )
       @namespace = namespace
       yield @configuration if block_given?
-
-      # expand the info plist path, as it's likely to be relative and we'll be fucking
-      # around with the cwd later on.
-      @configuration.info_plist = File.expand_path @configuration.info_plist unless @configuration.info_plist == nil
     end
 
     def xcodebuild(*args)
