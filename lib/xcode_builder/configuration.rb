@@ -22,8 +22,6 @@ module XcodeBuilder
       end
 
       args << "-sdk iphoneos"
-
-      args << "-archivePath #{File.expand_path xcarchive_path}"
       
       args << "-configuration '#{configuration}'"
       args << "BUILD_DIR=\"#{File.expand_path build_dir}\""
@@ -135,10 +133,6 @@ module XcodeBuilder
     
     def built_app_path
       File.join("#{build_dir}", "#{configuration}-iphoneos", "#{app_file_name}")
-    end
-
-    def xcarchive_path
-      File.join("#{build_dir}", "#{configuration}.xcarchive")
     end
 
     def ipa_path

@@ -28,8 +28,7 @@ module XcodeBuilder
         :xcodebuild_extra_args => nil,
         :xcrun_extra_args => nil,
         :timestamp_build => nil,
-        :pod_repo_sources => nil,
-        :watch_app => false
+        :pod_repo_sources => nil
       )
       @namespace = namespace
       yield @configuration if block_given?
@@ -72,7 +71,7 @@ module XcodeBuilder
       @configuration.timestamp_plist if @configuration.timestamp_build
 
       print "Building Project..."
-      success = xcodebuild @configuration.build_arguments, "archive"
+      success = xcodebuild @configuration.build_arguments, "build"
       raise "** BUILD FAILED **" unless success
       puts "Done"
     end
@@ -82,68 +81,36 @@ module XcodeBuilder
       build
 
       print "Packaging and Signing..."        
+      if (@configuration.signing_identity != nil) then 
+        puts "" 
+        print "Signing identity: #{@configuration.signing_identity}" 
+      end
+
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
     
       # Construct the IPA and Sign it
       cmd = []
-      cmd << "-exportArchive"
-      cmd << "-exportFormat"
-      cmd << "ipa"
-      cmd << "-exportWithOriginalSigningIdentity"
-      cmd << "-archivePath"
-      cmd << "'#{File.expand_path @configuration.xcarchive_path}'"
-      cmd << "-exportPath"
-      cmd << "'#{File.expand_path @configuration.ipa_path}'"
+      cmd << "/usr/bin/xcrun"
+      cmd << "-sdk iphoneos"
+      cmd << "PackageApplication"
+      cmd << "'#{@configuration.built_app_path}'"
+      cmd << "-o '#{@configuration.ipa_path}'"
+      cmd << "--sign '#{@configuration.signing_identity}'" unless @configuration.signing_identity == nil
 
-      # puts "Running #{cmd.join(" ")}" if @configuration.verbose
-      # cmd << "2>&1 /dev/null"
-      # cmd = cmd.join(" ")
-      # system(cmd)
-      xcodebuild cmd ""
-
-      if @configuration.watch_app then
-        reinject_wk_stub_in_ipa
+      if @configuration.xcrun_extra_args then
+        cmd.concat @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? Array
+        cmd << @configuration.xcrun_extra_args if @configuration.xcrun_extra_args.is_a? String
       end
 
+      puts "Running #{cmd.join(" ")}" if @configuration.verbose
+      cmd << "2>&1 /dev/null"
+      cmd = cmd.join(" ")
+      system(cmd)
+      
       puts ""
       puts "Done."
-    end
-
-    def reinject_wk_stub_in_ipa
-      puts ""
-      put "Reinject WK support into signed IPA..."
-      # create a tmp folder
-      tmp_folder = @configuration.package_destination_path + "tmp"
-      FileUtils.mkdir_p tmp_folder
-
-      # copy the ipa to it
-      FileUtils.cp "#{File.expand_path @configuration.ipa_path}", tmp_folder
-
-      # evaluate this here because this is based on pwd
-      full_ipa_path = @configuration.ipa_path
-      # keep track of current folder so can cd back to it and cd to tmp folder
-      current_folder = `pwd`.gsub("\n", "")
-      Dir.chdir tmp_folder
-
-      # unzip ipa and get rid of it
-      `unzip '#{@configuration.ipa_name}'`
-      FileUtils.rm @configuration.ipa_name
-
-      # now reinject the shiznit in
-      FileUtils.mkdir "WatchKitSupport"
-      #get the xcode path
-      base = `xcode-select --print-path`.gsub("\n", "")
-      wk_path = "#{base}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/Library/Application Support/WatchKit/*"
-      FileUtils.cp_r Dir.glob(wk_path), "WatchKitSupport"
-
-      # now zip the fucker
-      `zip -r '#{full_ipa_path}' *`
-      Dir.chdir current_folder
-      FileUtils.rm_rf tmp_folder
-      put " Done."
-      puts ""
     end
 
     def deploy
