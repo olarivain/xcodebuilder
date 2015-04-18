@@ -109,9 +109,49 @@ module XcodeBuilder
       cmd = cmd.join(" ")
       system(cmd)
       
+      if @configuration.watch_app then
+        reinject_wk_stub_in_ipa
+      end
+
       puts ""
       puts "Done."
     end
+
+    def reinject_wk_stub_in_ipa
+      puts ""
+      print "Reinject WK support into signed IPA..."
+      # create a tmp folder
+      tmp_folder = @configuration.package_destination_path + "tmp"
+      FileUtils.mkdir_p tmp_folder
+
+      # copy the ipa to it
+      FileUtils.cp "#{File.expand_path @configuration.ipa_path}", tmp_folder
+
+      # evaluate this here because this is based on pwd
+      full_ipa_path = @configuration.ipa_path
+      # keep track of current folder so can cd back to it and cd to tmp folder
+      current_folder = `pwd`.gsub("\n", "")
+      Dir.chdir tmp_folder
+
+      # unzip ipa and get rid of it
+      `unzip '#{@configuration.ipa_name}'`
+      FileUtils.rm @configuration.ipa_name
+
+      # now reinject the shiznit in
+      FileUtils.mkdir "WatchKitSupport"
+      #get the xcode path
+      base = `xcode-select --print-path`.gsub("\n", "")
+      wk_path = "#{base}/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/Library/Application Support/WatchKit/*"
+      FileUtils.cp_r Dir.glob(wk_path), "WatchKitSupport"
+
+      # now zip the fucker
+      `zip -r '#{full_ipa_path}' *`
+      Dir.chdir current_folder
+      FileUtils.rm_rf tmp_folder
+      print " Done."
+      puts ""
+    end
+
 
     def deploy
       package
