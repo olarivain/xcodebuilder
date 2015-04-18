@@ -71,9 +71,9 @@ module XcodeBuilder
       # update the long version number with the date
       @configuration.timestamp_plist if @configuration.timestamp_build
 
-      # print "Building Project..."
-      # success = xcodebuild @configuration.build_arguments, "archive"
-      # raise "** BUILD FAILED **" unless success
+      print "Building Project..."
+      success = xcodebuild @configuration.build_arguments, "archive"
+      raise "** BUILD FAILED **" unless success
       puts "Done"
     end
     
@@ -81,7 +81,7 @@ module XcodeBuilder
     def package
       build
 
-      puts "Packaging and Signing..."        
+      print "Packaging and Signing..."        
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
@@ -101,18 +101,19 @@ module XcodeBuilder
       # cmd << "2>&1 /dev/null"
       # cmd = cmd.join(" ")
       # system(cmd)
-      xcodebuild cmd, ""
-      puts "Done."
+      xcodebuild cmd ""
 
       if @configuration.watch_app then
         reinject_wk_stub_in_ipa
       end
-      
+
+      puts ""
+      puts "Done."
     end
 
     def reinject_wk_stub_in_ipa
       puts ""
-      print "Reinject WK support into signed IPA..."
+      put "Reinject WK support into signed IPA..."
       # create a tmp folder
       tmp_folder = @configuration.package_destination_path + "tmp"
       FileUtils.mkdir_p tmp_folder
@@ -141,7 +142,7 @@ module XcodeBuilder
       `zip -r '#{full_ipa_path}' *`
       Dir.chdir current_folder
       FileUtils.rm_rf tmp_folder
-      print " Done."
+      put " Done."
       puts ""
     end
 
