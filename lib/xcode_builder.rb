@@ -71,9 +71,9 @@ module XcodeBuilder
       # update the long version number with the date
       @configuration.timestamp_plist if @configuration.timestamp_build
 
-      # print "Building Project..."
-      # success = xcodebuild @configuration.build_arguments, "archive"
-      # raise "** BUILD FAILED **" unless success
+      print "Building Project..."
+      success = xcodebuild @configuration.build_arguments, "archive"
+      raise "** BUILD FAILED **" unless success
       puts "Done"
     end
     
@@ -97,10 +97,6 @@ module XcodeBuilder
       cmd << "-exportPath"
       cmd << "'#{File.expand_path @configuration.ipa_path}'"
 
-      # puts "Running #{cmd.join(" ")}" if @configuration.verbose
-      # cmd << "2>&1 /dev/null"
-      # cmd = cmd.join(" ")
-      # system(cmd)
       xcodebuild cmd, ""
       puts "Done."
 
