@@ -13,6 +13,7 @@ module XcodeBuilder
       @configuration = Configuration.new(
         :configuration => "Release",
         :build_dir => "build",
+        :sdk => "iphoneos",
         :project_file_path => nil,
         :workspace_file_path => nil,
         :scheme => nil,
@@ -53,7 +54,7 @@ module XcodeBuilder
 
       return master_repo + Array(@configuration.pod_repo_sources)
     end
-    
+
     # desc "Clean the Build"
     def clean
       unless @configuration.skip_clean
@@ -62,7 +63,7 @@ module XcodeBuilder
         puts "Done"
       end
     end
-    
+
     # desc "Build the beta release of the app"
     def build
       clean unless @configuration.skip_clean
@@ -75,21 +76,21 @@ module XcodeBuilder
       raise "** BUILD FAILED **" unless success
       puts "Done"
     end
-    
+
     # desc "Package the release as a distributable archive"
     def package
       build
 
-      print "Packaging and Signing..."        
-      if (@configuration.signing_identity != nil) then 
-        puts "" 
-        print "Signing identity: #{@configuration.signing_identity}" 
+      print "Packaging and Signing..."
+      if (@configuration.signing_identity != nil) then
+        puts ""
+        print "Signing identity: #{@configuration.signing_identity}"
       end
 
       # trash and create the dist IPA path if needed
       FileUtils.rm_rf @configuration.package_destination_path unless !File.exists? @configuration.package_destination_path
       FileUtils.mkdir_p @configuration.package_destination_path
-    
+
       # Construct the IPA and Sign it
       cmd = []
       cmd << "/usr/bin/xcrun"
@@ -108,7 +109,7 @@ module XcodeBuilder
       cmd << "2>&1 /dev/null"
       cmd = cmd.join(" ")
       system(cmd)
-      
+
       if @configuration.watch_app then
         reinject_wk_stub_in_ipa
       end
@@ -162,7 +163,7 @@ module XcodeBuilder
       # deploy or package depending on configuration
       if @configuration.deployment_strategy then
         deploy
-      else 
+      else
         package
       end
 

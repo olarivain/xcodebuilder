@@ -21,19 +21,19 @@ module XcodeBuilder
         args << "-project '#{project_file_path}'" if project_file_path
       end
 
-      args << "-sdk iphoneos"
-      
+      args << "-sdk #{sdk}"
+
       args << "-configuration '#{configuration}'"
       args << "BUILD_DIR=\"#{File.expand_path build_dir}\""
-      
+
       if xcodebuild_extra_args
           args.concat xcodebuild_extra_args if xcodebuild_extra_args.is_a? Array
           args << "#{xcodebuild_extra_args}" if xcodebuild_extra_args.is_a? String
       end
-      
+
       args
     end
-    
+
     def app_file_name
       raise ArgumentError, "app_name or target must be set in the BetaBuilder configuration block" if app_name.nil?
       "#{app_name}.app"
@@ -54,7 +54,7 @@ module XcodeBuilder
         version_line = file.gets
       end while version_line.eql? "\n"
 
-      if match = version_line.match(/\s*version\s*=\s*["'](.*)["']\s*/i) 
+      if match = version_line.match(/\s*version\s*=\s*["'](.*)["']\s*/i)
         version = match.captures
       end
       return version[0]
@@ -121,16 +121,16 @@ module XcodeBuilder
     def ipa_name
       prefix = app_name == nil ? target : app_name
       "#{prefix}#{built_app_long_version_suffix}.ipa"
-    end      
+    end
 
     def built_app_long_version_suffix
       if build_number == nil then
         ""
-      else 
+      else
         "-#{build_number}"
       end
     end
-    
+
     def built_app_path
       File.join("#{build_dir}", "#{configuration}-iphoneos", "#{app_file_name}")
     end
@@ -142,7 +142,7 @@ module XcodeBuilder
     def app_bundle_path
       "#{package_destination_path}/#{app_name}.app"
     end
-    
+
     def deploy_using(strategy_name, &block)
       if DeploymentStrategies.valid_strategy?(strategy_name.to_sym)
         self.deployment_strategy = DeploymentStrategies.build(strategy_name, self)
