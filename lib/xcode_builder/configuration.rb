@@ -132,7 +132,7 @@ module XcodeBuilder
     end
 
     def built_app_path
-      File.join("#{build_dir}", "#{configuration}-iphoneos", "#{app_file_name}")
+      File.join("#{build_dir}", "#{configuration}-#{sdk}", "#{app_file_name}")
     end
 
     def ipa_path
