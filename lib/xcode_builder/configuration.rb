@@ -17,7 +17,8 @@ module XcodeBuilder
         args << "-workspace '#{workspace_file_path}'"
         args << "-scheme '#{scheme}'"
       else
-        args << "-target '#{target}'"
+        args << "-target '#{target}'" unless target == nil
+        args << "-scheme '#{scheme}'" unless scheme == nil
         args << "-project '#{project_file_path}'" if project_file_path
       end
 

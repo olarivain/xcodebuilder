@@ -29,6 +29,7 @@ module XcodeBuilder
         :xcodebuild_extra_args => nil,
         :xcrun_extra_args => nil,
         :timestamp_build => nil,
+        :target  => nil,
         :pod_repo_sources => nil
       )
       @namespace = namespace
