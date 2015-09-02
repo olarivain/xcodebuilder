@@ -22,7 +22,7 @@ module XcodeBuilder
         args << "-project '#{project_file_path}'" if project_file_path
       end
 
-      args << "-sdk #{sdk}"
+      # args << "-sdk #{sdk}"
 
       args << "-configuration '#{configuration}'"
       args << "BUILD_DIR=\"#{File.expand_path build_dir}\""
